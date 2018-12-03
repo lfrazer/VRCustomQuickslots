@@ -1,0 +1,5 @@
+LIBRARY	"VRCustomQuickslots"
+EXPORTS
+SKSEPlugin_Query
+SKSEPlugin_Load
+
