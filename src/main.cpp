@@ -25,12 +25,21 @@
 #include "common/IDebugLog.h"
 #include <shlobj.h>				// for use of CSIDL_MYCODUMENTS
 
+//Headers under api/ folder
+#include "api/PapyrusVRAPI.h"
+#include "api/VRManagerAPI.h"
+
 
 
 static PluginHandle					g_pluginHandle = kPluginHandle_Invalid;
 static SKSEPapyrusInterface         * g_papyrus = NULL;
+static SKSEMessagingInterface		* g_messaging = NULL;
+
+PapyrusVRAPI*	g_papyrusvr = nullptr;
 
 extern "C" {
+
+	void OnSKSEMessage(SKSEMessagingInterface::Message* msg);
 
 	bool SKSEPlugin_Query(const SKSEInterface * skse, PluginInfo * info) {	// Called by SKSE to learn about this plugin and check that it's safe to load it
 		gLog.OpenRelative(CSIDL_MYDOCUMENTS, "\\My Games\\Skyrim VR\\SKSE\\VRCustomQuickslots.log");
@@ -70,10 +79,53 @@ extern "C" {
 
 		g_papyrus = (SKSEPapyrusInterface *)skse->QueryInterface(kInterface_Papyrus);
 
+		//Registers for SKSE Messages (PapyrusVR probably still need to load, wait for SKSE message PostLoad)
+		_MESSAGE("Registering for SKSE messages");
+		g_messaging = (SKSEMessagingInterface*)skse->QueryInterface(kInterface_Messaging);
+		g_messaging->RegisterListener(g_pluginHandle, "SKSE", OnSKSEMessage);
 
+		//DO STUFF...
+		//wait for PapyrusVR init (during PostPostLoad SKSE Message)
 
 		return true;
 	}
+
+	void OnVRButtonEvent(PapyrusVR::VREventType type, PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
+	{
+		// Use button presses here
+		_MESSAGE("VR Button press deviceId: %d buttonId: %d\n", deviceId, buttonId);
+	}
+
+	//Listener for PapyrusVR Messages
+	void OnPapyrusVRMessage(SKSEMessagingInterface::Message* msg)
+	{
+		if (msg)
+		{
+			if (msg->type == kPapyrusVR_Message_Init && msg->data)
+			{
+				_MESSAGE("PapyrusVR Init Message recived with valid data, registering for pose update callback");
+				g_papyrusvr = (PapyrusVRAPI*)msg->data;
+
+				//Registers for PoseUpdates
+				//g_papyrusvr->RegisterPoseUpdateListener(OnPoseUpdate);  // deprecated
+				g_papyrusvr->GetVRManager()->RegisterVRButtonListener(OnVRButtonEvent);
+			}
+		}
+	}
+
+	//Listener for SKSE Messages
+	void OnSKSEMessage(SKSEMessagingInterface::Message* msg)
+	{
+		if (msg)
+		{
+			if (msg->type == SKSEMessagingInterface::kMessage_PostLoad)
+			{
+				_MESSAGE("SKSE PostLoad recived, registering for PapyrusVR messages from SkyrimVRTools");
+				g_messaging->RegisterListener(g_pluginHandle, "SkyrimVRTools", OnPapyrusVRMessage);
+			}
+		}
+	}
+
 
 
 };
