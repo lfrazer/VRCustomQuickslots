@@ -19,21 +19,38 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 
 	for (tinyxml2::XMLElement* elem = root->FirstChildElement(); elem; elem = elem->NextSiblingElement())
 	{
-		if (strcmp(elem->Name(), "quickslot") == 0)
+		
+		if (strcmp(elem->Name(), "options") == 0)
+		{
+			elem->QueryFloatAttribute("defaultradius", &defaultRadius);
+		}
+
+		else if (strcmp(elem->Name(), "quickslot") == 0)
 		{
 			float position[3];
 			float radius = defaultRadius;
-			const char* cmd = "none";
+			const char* cmd[2] = { 0 }; // two commands, one for each hand
+			const char* altCmd = "none";
 			const char* slotname = nullptr;
 
 			elem->QueryFloatAttribute("posx", &position[0]);
 			elem->QueryFloatAttribute("posy", &position[1]);
 			elem->QueryFloatAttribute("posz", &position[2]);
 			elem->QueryFloatAttribute("radius", &radius);
-			elem->QueryStringAttribute("command", &cmd);
 			elem->QueryStringAttribute("name", &slotname);
 
-			CQuickslot quickslot(PapyrusVR::Vector3(position[0], position[1], position[2]), radius, cmd, slotname);
+			int cmdCount = 0;
+			for(tinyxml2::XMLElement* subElem = elem->FirstChildElement(); subElem; subElem = subElem->NextSiblingElement())
+			{
+				if (cmdCount < 2)
+				{
+					cmd[cmdCount] = subElem->GetText();
+				}
+				cmdCount++;
+
+			}
+
+			CQuickslot quickslot(Vector3(position[0], position[1], position[2]), radius, cmd[0], cmd[1], slotname);
 			mQuickslotArray.push_back(quickslot);
 
 		}
@@ -41,3 +58,4 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 
 	return true;
 }
+

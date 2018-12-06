@@ -30,12 +30,15 @@
 #include "api/VRManagerAPI.h"
 
 
+#include "quickslots.h"
+
 
 static PluginHandle					g_pluginHandle = kPluginHandle_Invalid;
 static SKSEPapyrusInterface         * g_papyrus = NULL;
 static SKSEMessagingInterface		* g_messaging = NULL;
 
 PapyrusVRAPI*	g_papyrusvr = nullptr;
+CQuickslotManager* g_quickslotMgr = nullptr;
 
 extern "C" {
 
@@ -84,7 +87,6 @@ extern "C" {
 		g_messaging = (SKSEMessagingInterface*)skse->QueryInterface(kInterface_Messaging);
 		g_messaging->RegisterListener(g_pluginHandle, "SKSE", OnSKSEMessage);
 
-		//DO STUFF...
 		//wait for PapyrusVR init (during PostPostLoad SKSE Message)
 
 		return true;
@@ -94,6 +96,18 @@ extern "C" {
 	{
 		// Use button presses here
 		_MESSAGE("VR Button press deviceId: %d buttonId: %d\n", deviceId, buttonId);
+
+		g_quickslotMgr->ButtonPress(buttonId, deviceId);
+	}
+
+	void OnVRUpdateEvent(float deltaTime)
+	{
+		PapyrusVR::TrackedDevicePose* leftHandPose = g_papyrusvr->GetVRManager()->GetLeftHandPose();
+		PapyrusVR::TrackedDevicePose* rightHandPose = g_papyrusvr->GetVRManager()->GetRightHandPose();
+		PapyrusVR::TrackedDevicePose* hmdPose = g_papyrusvr->GetVRManager()->GetHMDPose();
+
+		g_quickslotMgr->Update(hmdPose, leftHandPose, rightHandPose);
+
 	}
 
 	//Listener for PapyrusVR Messages
@@ -106,9 +120,12 @@ extern "C" {
 				_MESSAGE("PapyrusVR Init Message recived with valid data, registering for pose update callback");
 				g_papyrusvr = (PapyrusVRAPI*)msg->data;
 
+				g_quickslotMgr = new CQuickslotManager;
+
 				//Registers for PoseUpdates
 				//g_papyrusvr->RegisterPoseUpdateListener(OnPoseUpdate);  // deprecated
 				g_papyrusvr->GetVRManager()->RegisterVRButtonListener(OnVRButtonEvent);
+				g_papyrusvr->GetVRManager()->RegisterVRUpdateListener(OnVRUpdateEvent);
 			}
 		}
 	}
