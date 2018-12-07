@@ -42,6 +42,17 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 	if (quickslot)  // if there is one, execute quickslot equip changes
 	{
 		// TODO
+
+		if (mDebugLogVerb > 0)
+		{
+			_MESSAGE("Found a quickslot at pos (%f,%f,%f) !\n", controllerPos.x, controllerPos.y, controllerPos.z);
+
+			quickslot->PrintInfo();
+		}
+	}
+	else if(mDebugLogVerb > 0)
+	{
+		_MESSAGE("NO quickslot found pos (%f,%f,%f)\n", controllerPos.x, controllerPos.y, controllerPos.z);
 	}
 }
 
@@ -62,4 +73,12 @@ CQuickslot*	 CQuickslotManager::FindQuickslot(const Vector3& pos, float radius)
 	}
 
 	return nullptr;
+}
+
+
+
+
+void CQuickslot::PrintInfo()
+{
+	_MESSAGE("Quickslot (%s) position: (%f,%f,%f) radius: %f\n", this->mName.c_str(), mPosition.x, mPosition.y, mPosition.z, mRadius);
 }

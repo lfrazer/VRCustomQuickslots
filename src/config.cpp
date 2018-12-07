@@ -5,13 +5,14 @@
 bool   CQuickslotManager::ReadConfig(const char* filename)
 {
 
-	float defaultRadius = 1.0f;
+	float defaultRadius = 0.1f;
 
 	tinyxml2::XMLDocument xmldoc;
 	tinyxml2::XMLError err = xmldoc.LoadFile(filename);
 
 	if(err != tinyxml2::XMLError::XML_SUCCESS)
 	{
+		_MESSAGE("Error: %s opening XML doc: %s", xmldoc.ErrorName(), filename);
 		return false;
 	}
 
@@ -23,6 +24,9 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 		if (strcmp(elem->Name(), "options") == 0)
 		{
 			elem->QueryFloatAttribute("defaultradius", &defaultRadius);
+			elem->QueryIntAttribute("debugloglevel", &mDebugLogVerb);
+
+			mControllerRadius = defaultRadius;
 		}
 
 		else if (strcmp(elem->Name(), "quickslot") == 0)
@@ -55,6 +59,8 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 
 		}
 	}
+
+	_MESSAGE("Finished reading %s - debugloglevel=%d", filename, mDebugLogVerb);
 
 	return true;
 }

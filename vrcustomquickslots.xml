@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<vrcustomquickslots>
+
+	<options debugloglevel="1" defaultradius="0.1" />
+
+
+	<quickslot name="origintest" posx="0.0" posy="0.0" posz="0.0">
+		<command>test</command>
+	</quickslot>
+
+	<quickslot name="abovetest" posx="0.0" posy="1.0" posz="0.0">
+		<command>test2</command>
+	</quickslot>
+
+	<quickslot name="depthtest" posx="0.0" posy="0.0" posz="1.0">
+		<command>test3</command>
+	</quickslot>
+
+	<quickslot name="righttest" posx="1.0" posy="0.0" posz="0.0">
+		<command>test4</command>
+	</quickslot>
+	
+</vrcustomquickslots>

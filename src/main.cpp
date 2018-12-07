@@ -95,7 +95,7 @@ extern "C" {
 	void OnVRButtonEvent(PapyrusVR::VREventType type, PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
 	{
 		// Use button presses here
-		_MESSAGE("VR Button press deviceId: %d buttonId: %d\n", deviceId, buttonId);
+		_MESSAGE("VR Button press deviceId: %d buttonId: %d", deviceId, buttonId);
 
 		g_quickslotMgr->ButtonPress(buttonId, deviceId);
 	}
@@ -121,6 +121,9 @@ extern "C" {
 				g_papyrusvr = (PapyrusVRAPI*)msg->data;
 
 				g_quickslotMgr = new CQuickslotManager;
+
+				_MESSAGE("Reading XML quickslots config vrcustomquickslots.xml");
+				g_quickslotMgr->ReadConfig("Data\\SKSE\\Plugins\\vrcustomquickslots.xml");
 
 				//Registers for PoseUpdates
 				//g_papyrusvr->RegisterPoseUpdateListener(OnPoseUpdate);  // deprecated
