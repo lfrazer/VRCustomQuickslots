@@ -54,7 +54,7 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 
 			}
 
-			CQuickslot quickslot(Vector3(position[0], position[1], position[2]), radius, cmd[0], cmd[1], slotname);
+			CQuickslot quickslot(PapyrusVR::Vector3(position[0], position[1], position[2]), radius, cmd[0], cmd[1], slotname);
 			mQuickslotArray.push_back(quickslot);
 
 		}

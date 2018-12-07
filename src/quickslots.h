@@ -1,7 +1,6 @@
 #pragma once
 #include "api/PapyrusVRTypes.h"
 #include "api/OpenVRTypes.h"
-#include "common/ITypes.h"
 #include <string>
 #include <vector>
 
@@ -12,7 +11,7 @@ class CQuickslot
 public:
 
 	CQuickslot() = default;
-	CQuickslot(Vector3 pos, float radius, const char* command, const char* cmdAlt = nullptr, const char* name = nullptr)
+	CQuickslot(PapyrusVR::Vector3 pos, float radius, const char* command, const char* cmdAlt = nullptr, const char* name = nullptr)
 	{
 		mPosition = pos;
 		mOrigin = pos;
@@ -33,8 +32,8 @@ public:
 	void PrintInfo();  // log information about this quickslot (debugging)
 
 protected:
-	Vector3	mPosition;		// current position of quickslot (center of sphere)
-	Vector3 mOrigin;		// original position (before transforming to be relative to HMD)
+	PapyrusVR::Vector3	mPosition;		// current position of quickslot (center of sphere)
+	PapyrusVR::Vector3 mOrigin;		// original position (before transforming to be relative to HMD)
 	float mRadius = 0.0f;	// radius of sphere
 	std::string mCommand;   // one command to equip each hand
 	std::string mCommandAlt;
@@ -48,7 +47,7 @@ class CQuickslotManager
 public:
 
 	bool			ReadConfig(const char* filename);
-	CQuickslot*		FindQuickslot(const Vector3& pos, float radius);
+	CQuickslot*		FindQuickslot(const PapyrusVR::Vector3& pos, float radius);
 	void			Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose);
 	void			ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
 

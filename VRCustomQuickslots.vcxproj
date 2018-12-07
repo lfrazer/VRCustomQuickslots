@@ -163,6 +163,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src/main.cpp" />
+    <ClCompile Include="src\api\PapyrusVRTypes.cpp" />
     <ClCompile Include="src\config.cpp" />
     <ClCompile Include="src\quickslots.cpp" />
     <ClCompile Include="src\tinyxml2.cpp" />

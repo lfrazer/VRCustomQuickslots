@@ -9,14 +9,16 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 	mRightControllerPose = rightCtrlPose;
 
 
-	Vector3 hmdPos = GetPositionFromVRPose(mHMDPose);
+	PapyrusVR::Vector3 hmdPos = GetPositionFromVRPose(mHMDPose);
+	PapyrusVR::Matrix33 rotMatrix = CreateRotMatrixAroundY(mHMDPose->mDeviceToAbsoluteTracking);
 
 	for(auto it = mQuickslotArray.begin(); it != mQuickslotArray.end(); ++it)
 	{
-		// update translation for each quickslot 
-		it->mPosition = it->mOrigin + hmdPos;
+		// update quickslots based on HMD rotation
+		it->mPosition = MultMatrix33(rotMatrix, it->mOrigin);
 
-		// TODO: update quickslots based on HMD rotation
+		// update translation for each quickslot 
+		it->mPosition = it->mPosition + hmdPos;
 	}
 }
 
@@ -45,7 +47,7 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 	}
 
 	// find the relevant quickslot which is overlapped by the controllers current position
-	Vector3 controllerPos = GetPositionFromVRPose(currControllerPose);
+	PapyrusVR::Vector3 controllerPos = GetPositionFromVRPose(currControllerPose);
 	CQuickslot* quickslot = FindQuickslot(controllerPos, mControllerRadius);
 
 	if (quickslot)  // if there is one, execute quickslot equip changes
@@ -65,7 +67,7 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 	}
 }
 
-CQuickslot*	 CQuickslotManager::FindQuickslot(const Vector3& pos, float radius)
+CQuickslot*	 CQuickslotManager::FindQuickslot(const PapyrusVR::Vector3& pos, float radius)
 {
 	const size_t numQuickslots = mQuickslotArray.size();
 	
