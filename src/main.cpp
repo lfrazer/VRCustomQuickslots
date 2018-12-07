@@ -95,9 +95,12 @@ extern "C" {
 	void OnVRButtonEvent(PapyrusVR::VREventType type, PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
 	{
 		// Use button presses here
-		_MESSAGE("VR Button press deviceId: %d buttonId: %d", deviceId, buttonId);
+		if (type == PapyrusVR::VREventType_Pressed)
+		{
+			//_MESSAGE("VR Button press deviceId: %d buttonId: %d", deviceId, buttonId);
 
-		g_quickslotMgr->ButtonPress(buttonId, deviceId);
+			g_quickslotMgr->ButtonPress(buttonId, deviceId);
+		}
 	}
 
 	void OnVRUpdateEvent(float deltaTime)

@@ -9,16 +9,22 @@
 		<command>test</command>
 	</quickslot>
 
-	<quickslot name="abovetest" posx="0.0" posy="1.0" posz="0.0">
-		<command>test2</command>
-	</quickslot>
 
-	<quickslot name="depthtest" posx="0.0" posy="0.0" posz="1.0">
+	<quickslot name="depthtest" posx="0.0" posy="0.0" posz="0.5">
 		<command>test3</command>
 	</quickslot>
 
-	<quickslot name="righttest" posx="1.0" posy="0.0" posz="0.0">
-		<command>test4</command>
+	<quickslot name="righttest" posx="0.5" posy="0.0" posz="0.0">
+		<command>testright</command>
 	</quickslot>
+	
+	<quickslot name="lefttest" posx="-0.5" posy="0.0" posz="0.0">
+		<command>testleft</command>
+	</quickslot>
+	
+	<quickslot name="waisttest" posx="-0.5" posy="-1.083529" posz="0.0">
+		<command>test5</command>
+	</quickslot>
+
 	
 </vrcustomquickslots>
