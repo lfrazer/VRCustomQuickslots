@@ -10,19 +10,41 @@ class CQuickslot
 
 public:
 
+	enum eSlotType
+	{
+		SLOT_DEFAULT = 0,
+		SLOT_RIGHTHAND = 1,
+		SLOT_LEFTHAND = 2,
+	};
+
+	enum eCmdActionType
+	{
+		NO_ACTION = 0,
+		EQUIP_ITEM,
+		EQUIP_SPELL,
+		EQUIP_SHOUT,
+		CONSOLE_CMD
+	};
+
+	// Quickslot action / cmd structure, what should the quickslot do?
+	// Should eventually support equip/use item, equip spell, equip shout or run console command
+	struct CQuickslotCmd
+	{
+		eCmdActionType mAction = NO_ACTION;
+		int mSlot = SLOT_DEFAULT;  // slot (which hand to use)
+		unsigned int mFormID = 0;  // Form object (item/spell/shout) numerical ID
+		std::string mCommand;  // console command
+	};
+
 	CQuickslot() = default;
-	CQuickslot(PapyrusVR::Vector3 pos, float radius, const char* command, const char* cmdAlt = nullptr, const char* name = nullptr)
+	CQuickslot(PapyrusVR::Vector3 pos, float radius, const CQuickslotCmd& cmd, const CQuickslotCmd& cmdAlt, const char* name = nullptr)
 	{
 		mPosition = pos;
 		mOrigin = pos;
 		mRadius = radius;
-		mCommand = command;
-
-		if (cmdAlt)
-		{
-			mCommandAlt = cmdAlt;
-		}
-
+		mCommand = cmd;
+		mCommandAlt = cmdAlt;
+		
 		if (name)
 		{
 			mName = name;
@@ -35,8 +57,8 @@ protected:
 	PapyrusVR::Vector3	mPosition;		// current position of quickslot (center of sphere)
 	PapyrusVR::Vector3 mOrigin;		// original position (before transforming to be relative to HMD)
 	float mRadius = 0.0f;	// radius of sphere
-	std::string mCommand;   // one command to equip each hand
-	std::string mCommandAlt;
+	CQuickslotCmd mCommand;   // one command to equip each hand
+	CQuickslotCmd mCommandAlt;
 	std::string mName;			// name of quickslot for debugging
 };
 

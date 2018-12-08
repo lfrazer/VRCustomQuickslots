@@ -33,7 +33,7 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 		{
 			float position[3];
 			float radius = defaultRadius;
-			const char* cmd[2] = { 0 }; // two commands, one for each hand
+			CQuickslot::CQuickslotCmd cmd[2]; // two commands, one for each hand
 			const char* altCmd = "none";
 			const char* slotname = nullptr;
 
@@ -48,7 +48,31 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 			{
 				if (cmdCount < 2)
 				{
-					cmd[cmdCount] = subElem->GetText();
+					if (strcmp(subElem->Name(), "equipitem") == 0)
+					{
+						cmd[cmdCount].mAction = CQuickslot::EQUIP_ITEM;
+					}
+					else if (strcmp(subElem->Name(), "equipspell") == 0)
+					{
+						cmd[cmdCount].mAction = CQuickslot::EQUIP_SPELL;
+					}
+					else if (strcmp(subElem->Name(), "equipshout") == 0)
+					{
+						cmd[cmdCount].mAction = CQuickslot::EQUIP_SHOUT;
+					}
+					else if (strcmp(subElem->Name(), "consolecmd") == 0)
+					{
+						cmd[cmdCount].mAction = CQuickslot::CONSOLE_CMD;
+					}
+
+					const char* formIdStr;
+					subElem->QueryStringAttribute("formid", &formIdStr);
+					cmd[cmdCount].mFormID = std::stoul(formIdStr, nullptr, 16);  // convert hex string to int
+
+					// get which slot to use
+					subElem->QueryIntAttribute("slot", &cmd[cmdCount].mSlot);
+
+					cmd[cmdCount].mCommand = subElem->GetText();
 				}
 				cmdCount++;
 
