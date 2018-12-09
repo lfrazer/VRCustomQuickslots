@@ -1,6 +1,12 @@
 #include "quickslots.h"
 #include "quickslotutil.h"
 
+// SKSE includes
+#include "skse64/PapyrusActor.h"
+#include "skse64/GameAPI.h"
+#include "skse64/GameForms.h"
+#include "skse64/GameRTTI.h"
+#include "skse64/GameTypes.h"
 
 void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose)
 {
@@ -52,7 +58,9 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 
 	if (quickslot)  // if there is one, execute quickslot equip changes
 	{
-		// TODO
+		// one action for each hand (right and left)
+		quickslot->DoAction(quickslot->mCommand);
+		quickslot->DoAction(quickslot->mCommandAlt);
 
 		if (mDebugLogVerb > 0)
 		{
@@ -92,4 +100,13 @@ CQuickslot*	 CQuickslotManager::FindQuickslot(const PapyrusVR::Vector3& pos, flo
 void CQuickslot::PrintInfo()
 {
 	_MESSAGE("Quickslot (%s) position: (%f,%f,%f) radius: %f", this->mName.c_str(), mPosition.x, mPosition.y, mPosition.z, mRadius);
+}
+
+void CQuickslot::DoAction(const CQuickslotCmd& cmd)
+{
+	if (cmd.mAction == EQUIP_ITEM)
+	{
+		TESForm* itemFormObj = LookupFormByID(cmd.mFormID);
+		papyrusActor::EquipItemEx( (Actor*)(*g_thePlayer), itemFormObj, cmd.mSlot, false, true);
+	}
 }

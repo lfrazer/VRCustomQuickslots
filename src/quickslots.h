@@ -52,6 +52,7 @@ public:
 	}
 
 	void PrintInfo();  // log information about this quickslot (debugging)
+	void DoAction(const CQuickslotCmd& cmd);  // perform set quickslot action (call on button press)
 
 protected:
 	PapyrusVR::Vector3	mPosition;		// current position of quickslot (center of sphere)

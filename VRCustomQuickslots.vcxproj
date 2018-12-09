@@ -110,7 +110,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>shlwapi.lib;common_vc14.lib;skse64_common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;common_vc14.lib;skse64_common.lib;sksevr_1_4_15.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
       <AdditionalLibraryDirectories>$(SolutionDir)x64\Debug;$(SolutionDir)x64\Debug-StaticLib;$(SolutionDir)x64_v140\Debug</AdditionalLibraryDirectories>
     </Link>
@@ -151,9 +151,9 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>shlwapi.lib;common_vc14.lib;skse64_common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;common_vc14.lib;skse64_common.lib;sksevr_1_4_15.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
-      <AdditionalLibraryDirectories>$(SolutionDir)x64\Debug;$(SolutionDir)x64\Release-StaticLib;$(SolutionDir)x64_v140\Release</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)x64\Release;$(SolutionDir)x64\Release-StaticLib;$(SolutionDir)x64_v140\Release</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

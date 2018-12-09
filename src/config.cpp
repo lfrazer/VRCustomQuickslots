@@ -16,6 +16,7 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 		return false;
 	}
 
+	int quickslotCount = 0;
 	tinyxml2::XMLElement* root = xmldoc.RootElement();
 
 	for (tinyxml2::XMLElement* elem = root->FirstChildElement(); elem; elem = elem->NextSiblingElement())
@@ -67,12 +68,18 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 
 					const char* formIdStr;
 					subElem->QueryStringAttribute("formid", &formIdStr);
-					cmd[cmdCount].mFormID = std::stoul(formIdStr, nullptr, 16);  // convert hex string to int
+					if (formIdStr != nullptr)
+					{
+						cmd[cmdCount].mFormID = std::stoul(formIdStr, nullptr, 16);  // convert hex string to int
+					}
 
 					// get which slot to use
 					subElem->QueryIntAttribute("slot", &cmd[cmdCount].mSlot);
 
-					cmd[cmdCount].mCommand = subElem->GetText();
+					if (subElem->GetText())
+					{
+						cmd[cmdCount].mCommand = subElem->GetText();
+					}
 				}
 				cmdCount++;
 
@@ -80,6 +87,10 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 
 			CQuickslot quickslot(PapyrusVR::Vector3(position[0], position[1], position[2]), radius, cmd[0], cmd[1], slotname);
 			mQuickslotArray.push_back(quickslot);
+
+			quickslotCount++;
+			_MESSAGE("Read in quickslot #%d, info below:", quickslotCount);
+			quickslot.PrintInfo();
 
 		}
 	}
