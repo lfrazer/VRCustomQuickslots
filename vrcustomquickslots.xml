@@ -1,30 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<!-- 
+All positions are in SteamVR coordinates relative to headset, -y is below headset, +x right of headset, -x left of headset and +z is behind headset
+Use "showinv" to get list of ItemID (set using formid="xxxx")  - for use with <equipitem>
+Check list of spellIDs here  https://en.uesp.net/wiki/Skyrim:Spells  (set using formid="xxxx") - for use with <equipspell>
+Check list of shouts here https://en.uesp.net/wiki/Skyrim:Dragon_Shouts and here https://en.uesp.net/wiki/Skyrim:Powers (set using formid="xxxx") - for use with <equipshout>
+Use <consolecmd>your_command_here</consolecmd> to run console commands
+Default quickslot layout was made for someone who is around 6 feet (182cm) tall 
+-->
+
 <vrcustomquickslots>
 
-	<options debugloglevel="1" defaultradius="0.1" />
+	<!-- debugloglevel sets the amount of logging, use 0 for normal use.  defaultradius is the normal radius size of quickslot spheres and controller overlap sphere -->
+	<options debugloglevel="0" defaultradius="0.12" />
 
-
-	<quickslot name="origintest" posx="0.0" posy="0.0" posz="0.0">
-		<command>test</command>
-	</quickslot>
-
-
-	<quickslot name="depthtest" posx="0.0" posy="0.0" posz="0.5">
-		<command>test3</command>
-	</quickslot>
-
-	<quickslot name="righttest" posx="0.5" posy="0.0" posz="0.0">
-		<command>testright</command>
+	<!-- back right slot -->
+	<quickslot name="backright" posx="0.2" posy="-0.2" posz="0.175">
+		<equipitem formid="000139AD"></equipitem> 	<!--  equip ebony bow -->
 	</quickslot>
 	
-	<quickslot name="lefttest" posx="-0.5" posy="0.0" posz="0.0">
-		<command>testleft</command>
+	<!-- back left slot -->
+	<quickslot name="backleft" posx="-0.2" posy="-0.2" posz="0.175">
+		<equipitem formid="000139b1"></equipitem> 	<!-- equip ebony sword -->
 	</quickslot>
 	
-	<quickslot name="waisttest" posx="-0.5" posy="-1.083529" posz="0.0">
-		<command>test5</command>
+	<quickslot name="waistright" posx="0.3" posy="-0.9" posz="0.0">
+		<equipspell formid="0002f3b8"></equipspell>  <!-- fast healing spell -->
+	</quickslot>
+	
+	<quickslot name="waistleft" posx="-0.3" posy="-0.9" posz="0.0">
+		<equipspell formid="00043324"></equipspell>  <!-- candlelight -->
 	</quickslot>
 
+	<quickslot name="lowerbackright" posx="0.2" posy="-0.9" posz="0.175" >
+		<equipspell formid="00012fd0" slot="1"></equipspell>  <!-- equip firebolt in right hand -->
+	</quickslot>
+	
+	<quickslot name="lowerbackleft" posx="-0.2" posy="-0.9" posz="0.175" >
+		<equipspell formid="0001a4cc" slot="2"></equipspell>  <!-- equip telekensis in left hand -->
+	</quickslot>
+	
+	<quickslot name="abovehead" posx="0.0" posy="0.25" posxz="0.0" >
+		<equipshout formid="00048ac9"></equipshout>  <!-- equip slow time shout -->
+	</quickslot>
 	
 </vrcustomquickslots>

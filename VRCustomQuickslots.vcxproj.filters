@@ -30,6 +30,9 @@
     <ClCompile Include="src\api\PapyrusVRTypes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\console.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\tinyxml2.h">
@@ -39,6 +42,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\quickslotutil.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

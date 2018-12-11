@@ -157,6 +157,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\console.h" />
     <ClInclude Include="src\quickslots.h" />
     <ClInclude Include="src\quickslotutil.h" />
     <ClInclude Include="src\tinyxml2.h" />
@@ -165,6 +166,7 @@
     <ClCompile Include="src/main.cpp" />
     <ClCompile Include="src\api\PapyrusVRTypes.cpp" />
     <ClCompile Include="src\config.cpp" />
+    <ClCompile Include="src\console.cpp" />
     <ClCompile Include="src\quickslots.cpp" />
     <ClCompile Include="src\tinyxml2.cpp" />
   </ItemGroup>

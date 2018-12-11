@@ -1,5 +1,6 @@
 #include "quickslots.h"
 #include "quickslotutil.h"
+#include "console.h"
 
 // SKSE includes
 #include "skse64/PapyrusActor.h"
@@ -108,5 +109,40 @@ void CQuickslot::DoAction(const CQuickslotCmd& cmd)
 	{
 		TESForm* itemFormObj = LookupFormByID(cmd.mFormID);
 		papyrusActor::EquipItemEx( (Actor*)(*g_thePlayer), itemFormObj, cmd.mSlot, false, true);
+	}
+	else if (cmd.mAction == EQUIP_SPELL)
+	{
+		const char* slotNames[3] = { "default", "right", "left" };  // should match eSlotType
+		const size_t cmdBufferSize = 255;
+		char cmdBuffer[cmdBufferSize];
+
+		if (cmd.mSlot == SLOT_DEFAULT)  // equip in both hands if its slot default
+		{
+			sprintf_s(cmdBuffer, cmdBufferSize, "player.equipspell %x left", cmd.mFormID);
+			CSkyrimConsole::RunCommand(cmdBuffer);
+
+			sprintf_s(cmdBuffer, cmdBufferSize, "player.equipspell %x right", cmd.mFormID);
+			CSkyrimConsole::RunCommand(cmdBuffer);
+		}
+		else if(cmd.mSlot <= SLOT_LEFTHAND)
+		{
+			sprintf_s(cmdBuffer, cmdBufferSize, "player.equipspell %x %s", cmd.mFormID, slotNames[cmd.mSlot]);
+			CSkyrimConsole::RunCommand(cmdBuffer);
+		}
+		else
+		{
+			_MESSAGE("Invalid slot Type %d for spell: %x equip.", cmd.mSlot, cmd.mFormID);
+		}
+	}
+	else if (cmd.mAction == EQUIP_SHOUT)
+	{
+		const size_t cmdBufferSize = 255;
+		char cmdBuffer[cmdBufferSize];
+		sprintf_s(cmdBuffer, cmdBufferSize, "player.equipshout %x", cmd.mFormID);
+		CSkyrimConsole::RunCommand(cmdBuffer);
+	}
+	else if (cmd.mAction == CONSOLE_CMD)
+	{
+		CSkyrimConsole::RunCommand(cmd.mCommand.c_str());
 	}
 }
