@@ -1,3 +1,24 @@
+/*
+	VRCustomQuickslots - VR Custom Quickslots SKSE extension for SkyrimVR
+	Copyright (C) 2018 L Frazer
+	https://github.com/lfrazer
+
+	This file is part of VRCustomQuickslots.
+
+	VRCustomQuickslots is free software: you can redistribute it and/or modify
+	it under the terms of the GNU Lesser General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	SKSE-VRInputPlugin is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU Lesser General Public License for more details.
+
+	You should have received a copy of the GNU Lesser General Public License
+	along with VRCustomQuickslots.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #include "quickslots.h"
 #include "quickslotutil.h"
 #include "console.h"
@@ -16,16 +37,19 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 	mRightControllerPose = rightCtrlPose;
 
 
-	PapyrusVR::Vector3 hmdPos = GetPositionFromVRPose(mHMDPose);
-	PapyrusVR::Matrix33 rotMatrix = CreateRotMatrixAroundY(mHMDPose->mDeviceToAbsoluteTracking);
-
-	for(auto it = mQuickslotArray.begin(); it != mQuickslotArray.end(); ++it)
+	if (hmdPose->bPoseIsValid)
 	{
-		// update quickslots based on HMD rotation
-		it->mPosition = MultMatrix33(rotMatrix, it->mOrigin);
+		PapyrusVR::Vector3 hmdPos = GetPositionFromVRPose(mHMDPose);
+		PapyrusVR::Matrix33 rotMatrix = CreateRotMatrixAroundY(mHMDPose->mDeviceToAbsoluteTracking);
 
-		// update translation for each quickslot 
-		it->mPosition = it->mPosition + hmdPos;
+		for (auto it = mQuickslotArray.begin(); it != mQuickslotArray.end(); ++it)
+		{
+			// update quickslots based on HMD rotation
+			it->mPosition = MultMatrix33(rotMatrix, it->mOrigin);
+
+			// update translation for each quickslot 
+			it->mPosition = it->mPosition + hmdPos;
+		}
 	}
 }
 
@@ -40,11 +64,11 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 	// find quickslot based on current hand 
 	PapyrusVR::TrackedDevicePose* currControllerPose = nullptr;
 
-	if (deviceId == PapyrusVR::VRDevice_LeftController)
+	if (deviceId == PapyrusVR::VRDevice_LeftController && mLeftControllerPose->bPoseIsValid)
 	{
 		currControllerPose = mLeftControllerPose;
 	}
-	else if (deviceId == PapyrusVR::VRDevice_RightController)
+	else if (deviceId == PapyrusVR::VRDevice_RightController && mRightControllerPose->bPoseIsValid)
 	{
 		currControllerPose = mRightControllerPose;
 	}

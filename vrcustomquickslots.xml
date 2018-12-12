@@ -40,7 +40,7 @@ Default quickslot layout was made for someone who is around 6 feet (182cm) tall
 		<equipspell formid="0001a4cc" slot="2"></equipspell>  <!-- equip telekensis in left hand -->
 	</quickslot>
 	
-	<quickslot name="abovehead" posx="0.0" posy="0.25" posxz="0.0" >
+	<quickslot name="abovehead" posx="0.0" posy="0.25" posz="0.0" >
 		<equipshout formid="00048ac9"></equipshout>  <!-- equip slow time shout -->
 	</quickslot>
 	
