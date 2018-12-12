@@ -2,7 +2,7 @@
 
 <!-- 
 All positions are in SteamVR coordinates relative to headset, -y is below headset, +x right of headset, -x left of headset and +z is behind headset
-Use "showinv" to get list of ItemID (set using formid="xxxx")  - for use with <equipitem>
+Use "showinventory" to get list of ItemID (set using formid="xxxx")  - for use with <equipitem>
 Check list of spellIDs here  https://en.uesp.net/wiki/Skyrim:Spells  (set using formid="xxxx") - for use with <equipspell>
 Check list of shouts here https://en.uesp.net/wiki/Skyrim:Dragon_Shouts and here https://en.uesp.net/wiki/Skyrim:Powers (set using formid="xxxx") - for use with <equipshout>
 Use <consolecmd>your_command_here</consolecmd> to run console commands
