@@ -55,8 +55,8 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 
 void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
 {
-	// check if relevant button was pressed
-	if (buttonId != mActivateButton)
+	// check if relevant button was pressed, or if a menu was open and early exit
+	if (buttonId != mActivateButton || IsMenuOpen())
 	{
 		return;
 	}
@@ -121,6 +121,51 @@ CQuickslot*	 CQuickslotManager::FindQuickslot(const PapyrusVR::Vector3& pos, flo
 
 
 
+EventResult CQuickslotManager::AllMenuEventHandler::ReceiveEvent(MenuOpenCloseEvent * evn, EventDispatcher<MenuOpenCloseEvent> * dispatcher)
+{
+	if (evn->opening)
+	{
+		MenuOpenEvent(evn->menuName.c_str());
+	}
+	else
+	{
+		MenuCloseEvent(evn->menuName.c_str());
+	}
+
+	return EventResult::kEvent_Continue;
+}
+
+void CQuickslotManager::AllMenuEventHandler::MenuOpenEvent(const char* menuName)
+{
+
+	std::string name = menuName;
+
+	if (name == "HUD Menu" || name == "WSEnemyMeters" || name == "WSDebugOverlay" || name == "Overlay Interaction Menu" || name == "Overlay Menu" || name == "StatsMenu" || name == "TitleSequence Menu" || name == "Top Menu")
+	{
+		return;
+	}
+	else
+	{
+		mIsMenuOpen = true;
+	}
+
+}
+
+void CQuickslotManager::AllMenuEventHandler::MenuCloseEvent(const char* menuName)
+{
+	std::string name = menuName;
+
+	if (name == "HUD Menu" || name == "WSEnemyMeters" || name == "WSDebugOverlay" || name == "Overlay Interaction Menu" || name == "Overlay Menu" || name == "StatsMenu" || name == "TitleSequence Menu" || name == "Top Menu")
+	{
+		return;
+	}
+	else
+	{
+		mIsMenuOpen = false;
+	}
+
+}
+
 
 void CQuickslot::PrintInfo()
 {
@@ -170,3 +215,5 @@ void CQuickslot::DoAction(const CQuickslotCmd& cmd)
 		CSkyrimConsole::RunCommand(cmd.mCommand.c_str());
 	}
 }
+
+

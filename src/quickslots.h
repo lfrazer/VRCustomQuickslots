@@ -25,6 +25,8 @@
 #include <string>
 #include <vector>
 
+#include "skse64\PapyrusEvents.h"
+
 class CQuickslot
 {
 	friend class CQuickslotManager;
@@ -88,16 +90,31 @@ protected:
 
 class CQuickslotManager
 {
+	class AllMenuEventHandler : public BSTEventSink <MenuOpenCloseEvent>
+	{
+	public:
+		virtual EventResult	ReceiveEvent(MenuOpenCloseEvent * evn, EventDispatcher<MenuOpenCloseEvent> * dispatcher);
+		void MenuOpenEvent(const char* menuName);
+		void MenuCloseEvent(const char* menuName);
+
+		bool							mIsMenuOpen = false; // use events to block quickslots when menu is open, set this flag to true when menu is open
+	};
+
 public:
 
 	bool			ReadConfig(const char* filename);
 	CQuickslot*		FindQuickslot(const PapyrusVR::Vector3& pos, float radius);
 	void			Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose);
 	void			ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
+	bool			IsMenuOpen() const { return mMenuEventHandler.mIsMenuOpen; }
+
+
 
 private:
 
 	std::vector<CQuickslot>			mQuickslotArray;  // array of all quickslot objects
+
+	AllMenuEventHandler				mMenuEventHandler;
 
 	float							mControllerRadius = 0.1f;  // default sphere radius for controller overlap
 	PapyrusVR::EVRButtonId			mActivateButton = PapyrusVR::k_EButton_SteamVR_Trigger;
@@ -108,6 +125,4 @@ private:
 	PapyrusVR::TrackedDevicePose*	mRightControllerPose = nullptr;
 
 	int								mDebugLogVerb = 0;  // debug log verbosity - 0 means no logging
-
-
 };
