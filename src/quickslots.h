@@ -27,6 +27,14 @@
 
 #include "skse64\PapyrusEvents.h"
 
+#include "timer.h"
+
+// forward decl
+namespace vr
+{
+	class IVRSystem;
+}
+
 class CQuickslot
 {
 	friend class CQuickslotManager;
@@ -79,40 +87,43 @@ public:
 
 protected:
 	PapyrusVR::Vector3	mPosition;		// current position of quickslot (center of sphere)
-	PapyrusVR::Vector3 mOrigin;		// original position (before transforming to be relative to HMD)
-	float mRadius = 0.0f;	// radius of sphere
-	CQuickslotCmd mCommand;   // one command to equip each hand
-	CQuickslotCmd mCommandAlt;
-	std::string mName;			// name of quickslot for debugging
+	PapyrusVR::Vector3	mOrigin;		// original position (before transforming to be relative to HMD)
+	float				mRadius = 0.0f;	// radius of sphere
+	CQuickslotCmd		mCommand;   // one command to equip each hand
+	CQuickslotCmd		mCommandAlt;
+	std::string			mName;			// name of quickslot for debugging
+	double				mLastOverlapTime = 0.0;  // last overlap time
 };
-
 
 
 class CQuickslotManager
 {
+	friend class AllMenuEventHandler;
+
 	class AllMenuEventHandler : public BSTEventSink <MenuOpenCloseEvent>
 	{
 	public:
-		virtual EventResult	ReceiveEvent(MenuOpenCloseEvent * evn, EventDispatcher<MenuOpenCloseEvent> * dispatcher);
+		virtual EventResult	ReceiveEvent(MenuOpenCloseEvent * evn, EventDispatcher<MenuOpenCloseEvent> * dispatcher) override;
 		void MenuOpenEvent(const char* menuName);
 		void MenuCloseEvent(const char* menuName);
-
-		bool							mIsMenuOpen = false; // use events to block quickslots when menu is open, set this flag to true when menu is open
 	};
 
 public:
 
+	CQuickslotManager();
 	bool			ReadConfig(const char* filename);
 	CQuickslot*		FindQuickslot(const PapyrusVR::Vector3& pos, float radius);
 	void			Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose);
 	void			ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
-	bool			IsMenuOpen() const { return mMenuEventHandler.mIsMenuOpen; }
+	bool			IsMenuOpen() const { return mIsMenuOpen; }
 
 
 
 private:
 
 	std::vector<CQuickslot>			mQuickslotArray;  // array of all quickslot objects
+	CTimer							mTimer;
+	vr::IVRSystem*					mVRSystem = nullptr;
 
 	AllMenuEventHandler				mMenuEventHandler;
 
@@ -125,4 +136,6 @@ private:
 	PapyrusVR::TrackedDevicePose*	mRightControllerPose = nullptr;
 
 	int								mDebugLogVerb = 0;  // debug log verbosity - 0 means no logging
+	int								mHapticOnOverlap = 1;  // haptic feedback on quickslot overlap
+	bool							mIsMenuOpen = false; // use events to block quickslots when menu is open, set this flag to true when menu is open
 };

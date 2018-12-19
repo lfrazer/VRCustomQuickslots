@@ -22,6 +22,7 @@
 #include "quickslots.h"
 #include "quickslotutil.h"
 #include "console.h"
+#include "api/openvr.h"
 
 // SKSE includes
 #include "skse64/PapyrusActor.h"
@@ -30,12 +31,35 @@
 #include "skse64/GameRTTI.h"
 #include "skse64/GameTypes.h"
 
+
+extern CQuickslotManager* g_quickslotMgr;
+
+CQuickslotManager::CQuickslotManager()
+{
+	mTimer.Init();
+
+
+
+	MenuManager * mm = MenuManager::GetSingleton();
+	if (mm) {
+		mm->MenuOpenCloseEventDispatcher()->AddEventSink(&this->mMenuEventHandler);
+	} else {
+		_MESSAGE("Failed to register SKSE AllMenuEventHandler!");
+	}
+
+	if ((mVRSystem = vr::VRSystem()))
+		_MESSAGE("VR System is alive.");
+	else
+		_MESSAGE("No VR System found.");
+}
+
 void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose)
 {
 	mHMDPose = hmdPose;
 	mLeftControllerPose = leftCtrlPose;
 	mRightControllerPose = rightCtrlPose;
 
+	mTimer.TimerUpdate();
 
 	if (hmdPose->bPoseIsValid)
 	{
@@ -49,6 +73,36 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 
 			// update translation for each quickslot 
 			it->mPosition = it->mPosition + hmdPos;
+		}
+
+		// Check for overlaps for haptic feedback
+		if (mHapticOnOverlap && !IsMenuOpen())
+		{
+			// setup array of controllers and loop through it
+			const double kHapticTimeout = 1.0;
+			const int numControllers = 2;
+			PapyrusVR::TrackedDevicePose* controllers[numControllers] = {mLeftControllerPose, mRightControllerPose};
+			vr::ETrackedControllerRole controllerRoles[numControllers] = { vr::ETrackedControllerRole::TrackedControllerRole_LeftHand, vr::ETrackedControllerRole::TrackedControllerRole_RightHand };
+
+			for (int i = 0; i < numControllers; ++i)
+			{
+				PapyrusVR::Vector3 controllerPos = GetPositionFromVRPose(controllers[i]);
+				CQuickslot* quickslot = FindQuickslot(controllerPos, mControllerRadius);
+
+				if (quickslot)
+				{
+					// Do haptic response
+					if (quickslot->mLastOverlapTime - mTimer.GetLastTime() > kHapticTimeout)
+					{
+						auto controllerId = mVRSystem->GetTrackedDeviceIndexForControllerRole( controllerRoles[i]);
+						mVRSystem->TriggerHapticPulse(controllerId, 0, 1000);
+					}
+
+					quickslot->mLastOverlapTime = mTimer.GetLastTime();
+
+				}
+			}
+
 		}
 	}
 }
@@ -146,9 +200,10 @@ void CQuickslotManager::AllMenuEventHandler::MenuOpenEvent(const char* menuName)
 	}
 	else
 	{
-		mIsMenuOpen = true;
+		g_quickslotMgr->mIsMenuOpen = true;
 	}
 
+	_MESSAGE("MenuOpenEvent: %s", menuName);
 }
 
 void CQuickslotManager::AllMenuEventHandler::MenuCloseEvent(const char* menuName)
@@ -161,9 +216,10 @@ void CQuickslotManager::AllMenuEventHandler::MenuCloseEvent(const char* menuName
 	}
 	else
 	{
-		mIsMenuOpen = false;
+		g_quickslotMgr->mIsMenuOpen = false;
 	}
 
+	_MESSAGE("MenuCloseEvent: %s", menuName);
 }
 
 
