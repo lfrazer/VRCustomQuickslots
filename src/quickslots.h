@@ -115,7 +115,8 @@ public:
 	CQuickslot*		FindQuickslot(const PapyrusVR::Vector3& pos, float radius);
 	void			Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose);
 	void			ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
-	bool			IsMenuOpen() const { return mIsMenuOpen; }
+	// check when menu is open, plus for a short delay after it has been closed
+	bool			IsMenuOpen() { return mIsMenuOpen || kMenuBlockDelay + mMenuLastCloseTime > mTimer.GetLastTime(); }
 
 
 
@@ -138,4 +139,8 @@ private:
 	int								mDebugLogVerb = 0;  // debug log verbosity - 0 means no logging
 	int								mHapticOnOverlap = 1;  // haptic feedback on quickslot overlap
 	bool							mIsMenuOpen = false; // use events to block quickslots when menu is open, set this flag to true when menu is open
+	double							mMenuLastCloseTime = 0.0; // track the last time the menu was closed
+	
+	
+	const double					kMenuBlockDelay = 0.25;  // time in seconds to block actions after menu was closed
 };

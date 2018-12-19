@@ -224,6 +224,7 @@ void CQuickslotManager::AllMenuEventHandler::MenuCloseEvent(const char* menuName
 	}
 	else
 	{
+		g_quickslotMgr->mMenuLastCloseTime = g_quickslotMgr->mTimer.GetLastTime();
 		g_quickslotMgr->mIsMenuOpen = false;
 	}
 
