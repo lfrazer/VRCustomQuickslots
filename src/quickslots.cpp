@@ -43,14 +43,22 @@ CQuickslotManager::CQuickslotManager()
 	MenuManager * mm = MenuManager::GetSingleton();
 	if (mm) {
 		mm->MenuOpenCloseEventDispatcher()->AddEventSink(&this->mMenuEventHandler);
-	} else {
+	}
+	else {
 		_MESSAGE("Failed to register SKSE AllMenuEventHandler!");
 	}
 
-	if ((mVRSystem = vr::VRSystem()))
-		_MESSAGE("VR System is alive.");
+	vr::EVRInitError eError;
+	mVRSystem = (vr::IVRSystem *)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &eError);
+
+	if (mVRSystem)
+	{
+		_MESSAGE("Found VR System ptr");
+	}
 	else
-		_MESSAGE("No VR System found.");
+	{
+		_MESSAGE("VR System ptr not found, error: %d", eError);
+	}
 }
 
 void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose)
@@ -203,7 +211,7 @@ void CQuickslotManager::AllMenuEventHandler::MenuOpenEvent(const char* menuName)
 		g_quickslotMgr->mIsMenuOpen = true;
 	}
 
-	_MESSAGE("MenuOpenEvent: %s", menuName);
+	//_MESSAGE("MenuOpenEvent: %s", menuName);
 }
 
 void CQuickslotManager::AllMenuEventHandler::MenuCloseEvent(const char* menuName)
@@ -219,7 +227,7 @@ void CQuickslotManager::AllMenuEventHandler::MenuCloseEvent(const char* menuName
 		g_quickslotMgr->mIsMenuOpen = false;
 	}
 
-	_MESSAGE("MenuCloseEvent: %s", menuName);
+	//_MESSAGE("MenuCloseEvent: %s", menuName);
 }
 
 

@@ -50,6 +50,12 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 			elem->QueryIntAttribute("debugloglevel", &mDebugLogVerb);
 			elem->QueryIntAttribute("hapticfeedback", &mHapticOnOverlap);
 
+			if (mVRSystem == nullptr && mHapticOnOverlap)
+			{
+				mHapticOnOverlap = 0; 
+				_MESSAGE("OpenVR::VRSystem failed to load, disabling haptic feedback.");
+			}
+
 			mControllerRadius = defaultRadius;
 
 			elem->QueryFloatAttribute("controllerradius", &mControllerRadius);
