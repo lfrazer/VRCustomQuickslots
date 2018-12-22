@@ -28,6 +28,11 @@
 #include <iomanip>
 #include <sstream>
 
+#ifndef _DEBUG
+#undef ASSERT
+#define ASSERT(x) 
+#endif
+
 #ifndef WIN32
 #ifndef LINUX_OS
 #ifndef ANDROID_OS
@@ -197,7 +202,7 @@ double CTimer::GetTimeSlice(void) // time since last timer update
 
 void CTimer::TimerUpdate(void) // update the timer once per loop to use time slice
 {
-	double time = GetTime();
+	const double time = GetTime();
 	
 	mTimeSlice = time - mLastTime;
 

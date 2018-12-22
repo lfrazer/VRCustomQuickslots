@@ -52,7 +52,7 @@ extern "C" {
 		// populate info structure
 		info->infoVersion = PluginInfo::kInfoVersion;
 		info->name = "VRCustomQuickslots";
-		info->version = 1;
+		info->version = 2;
 
 		// store plugin handle so we can identify ourselves later
 		g_pluginHandle = skse->GetPluginHandle();
@@ -86,6 +86,8 @@ extern "C" {
 		_MESSAGE("Registering for SKSE messages");
 		g_messaging = (SKSEMessagingInterface*)skse->QueryInterface(kInterface_Messaging);
 		g_messaging->RegisterListener(g_pluginHandle, "SKSE", OnSKSEMessage);
+
+		g_quickslotMgr = new CQuickslotManager;
 
 		//wait for PapyrusVR init (during PostPostLoad SKSE Message)
 
@@ -122,8 +124,6 @@ extern "C" {
 			{
 				_MESSAGE("PapyrusVR Init Message recived with valid data, registering for pose update callback");
 				g_papyrusvr = (PapyrusVRAPI*)msg->data;
-
-				g_quickslotMgr = new CQuickslotManager;
 
 				_MESSAGE("Reading XML quickslots config vrcustomquickslots.xml");
 				g_quickslotMgr->ReadConfig("Data\\SKSE\\Plugins\\vrcustomquickslots.xml");

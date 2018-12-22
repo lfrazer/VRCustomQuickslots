@@ -116,14 +116,18 @@ public:
 	void			Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose);
 	void			ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
 	// check when menu is open, plus for a short delay after it has been closed
-	bool			IsMenuOpen() { return mIsMenuOpen || kMenuBlockDelay + mMenuLastCloseTime > mTimer.GetLastTime(); }
+	bool			IsMenuOpen();
 
 
 
 private:
 
+	void	GetVRSystem();
+
 	std::vector<CQuickslot>			mQuickslotArray;  // array of all quickslot objects
 	CTimer							mTimer;
+
+	int								mLastVRError = 0;
 	vr::IVRSystem*					mVRSystem = nullptr;
 
 	AllMenuEventHandler				mMenuEventHandler;

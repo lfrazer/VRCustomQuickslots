@@ -48,18 +48,34 @@ CQuickslotManager::CQuickslotManager()
 		_MESSAGE("Failed to register SKSE AllMenuEventHandler!");
 	}
 
-	vr::EVRInitError eError;
-	mVRSystem = (vr::IVRSystem *)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &eError);
+	GetVRSystem();
+
+}
+
+bool	CQuickslotManager::IsMenuOpen()
+{ 
+	return mIsMenuOpen || mMenuLastCloseTime + kMenuBlockDelay > mTimer.GetLastTime(); 
+}
+
+void  CQuickslotManager::GetVRSystem()
+{
+	vr::EVRInitError eError = vr::VRInitError_None;
+	//mVRSystem = (vr::IVRSystem *)vr::VR_GetGenericInterface(vr::IVRSystem_Version, &eError);
+
+
+	mVRSystem = vr::VRSystem();
 
 	if (mVRSystem)
 	{
 		_MESSAGE("Found VR System ptr");
 	}
-	else
+	else if(eError != mLastVRError)
 	{
-		_MESSAGE("VR System ptr not found, error: %d", eError);
+		_MESSAGE("VR System ptr not found, last unique error: %d", eError);
+		mLastVRError = eError;
 	}
 }
+
 
 void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose)
 {
@@ -69,7 +85,7 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 
 	mTimer.TimerUpdate();
 
-	if (hmdPose->bPoseIsValid)
+	if (!IsMenuOpen() && hmdPose->bPoseIsValid && leftCtrlPose->bPoseIsValid && rightCtrlPose->bPoseIsValid)
 	{
 		PapyrusVR::Vector3 hmdPos = GetPositionFromVRPose(mHMDPose);
 		PapyrusVR::Matrix33 rotMatrix = CreateRotMatrixAroundY(mHMDPose->mDeviceToAbsoluteTracking);
@@ -84,7 +100,7 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 		}
 
 		// Check for overlaps for haptic feedback
-		if (mHapticOnOverlap && !IsMenuOpen())
+		if (mHapticOnOverlap && mVRSystem)
 		{
 			// setup array of controllers and loop through it
 			const double kHapticTimeout = 1.0;
@@ -99,11 +115,16 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 
 				if (quickslot)
 				{
-					// Do haptic response
-					if (quickslot->mLastOverlapTime - mTimer.GetLastTime() > kHapticTimeout)
+					// Do haptic response (but not constantly, check for timeout)
+					if (mTimer.GetLastTime() - quickslot->mLastOverlapTime > kHapticTimeout)
 					{
 						auto controllerId = mVRSystem->GetTrackedDeviceIndexForControllerRole( controllerRoles[i]);
-						mVRSystem->TriggerHapticPulse(controllerId, 0, 1000);
+						mVRSystem->TriggerHapticPulse(controllerId, 0, 3999);
+
+						if (mDebugLogVerb > 0)
+						{
+							_MESSAGE("Triggered haptic pulse on controller %d", controllerId);
+						}
 					}
 
 					quickslot->mLastOverlapTime = mTimer.GetLastTime();
@@ -111,6 +132,11 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 				}
 			}
 
+		}
+		// if VR system is still invalid, keep trying to load it.. Has to be loaded after skyrimVR, and PapyrusVR/SkVRTools does not send us an event for this (TODO)
+		else if (mHapticOnOverlap && !mVRSystem)  
+		{
+			GetVRSystem();
 		}
 	}
 }
