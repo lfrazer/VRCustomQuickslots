@@ -143,6 +143,8 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 
 void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
 {
+	const double kHoldActionTime = 2.0;
+
 	// check if relevant button was pressed, or if a menu was open and early exit
 	if (buttonId != mActivateButton || IsMenuOpen())
 	{
@@ -171,9 +173,26 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 
 	if (quickslot)  // if there is one, execute quickslot equip changes
 	{
-		// one action for each hand (right and left)
-		quickslot->DoAction(quickslot->mCommand);
-		quickslot->DoAction(quickslot->mCommandAlt);
+		if (quickslot->mButtonHoldTime > kHoldActionTime)
+		{
+			_MESSAGE("Hold button action on quickslot %s !", quickslot->mName.c_str());
+			quickslot->mButtonHoldTime = 0.0;
+		}
+		else if (quickslot->mButtonHoldTime <= 0.0)
+		{
+			// one action for each hand (right and left)
+			quickslot->DoAction(quickslot->mCommand);
+			quickslot->DoAction(quickslot->mCommandAlt);
+
+			// increase press time on this quickslot
+			quickslot->mButtonHoldTime = mTimer.GetTimeSlice();
+		}
+		else
+		{
+			// increase press time on this quickslot
+			quickslot->mButtonHoldTime += mTimer.GetTimeSlice();
+		}
+
 
 		if (mDebugLogVerb > 0)
 		{
@@ -186,6 +205,16 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 	{
 		_MESSAGE("NO quickslot found pos (%f,%f,%f)", controllerPos.x, controllerPos.y, controllerPos.z);
 	}
+
+	// reset button hold time for all other quickslots
+	for (auto it = mQuickslotArray.begin(); it != mQuickslotArray.end(); ++it)
+	{
+		if (&(*it) != quickslot)
+		{
+			it->mButtonHoldTime = 0.0;
+		}
+	}
+
 }
 
 CQuickslot*	 CQuickslotManager::FindQuickslot(const PapyrusVR::Vector3& pos, float radius)

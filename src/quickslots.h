@@ -93,6 +93,9 @@ protected:
 	CQuickslotCmd		mCommandAlt;
 	std::string			mName;			// name of quickslot for debugging
 	double				mLastOverlapTime = 0.0;  // last overlap time
+	double				mButtonHoldTime = 0.0; // track time user held button on this quickslot
+
+
 };
 
 
@@ -144,7 +147,7 @@ private:
 	int								mHapticOnOverlap = 1;  // haptic feedback on quickslot overlap
 	bool							mIsMenuOpen = false; // use events to block quickslots when menu is open, set this flag to true when menu is open
 	double							mMenuLastCloseTime = 0.0; // track the last time the menu was closed
-	
-	
+
+	// constants
 	const double					kMenuBlockDelay = 0.25;  // time in seconds to block actions after menu was closed
 };
