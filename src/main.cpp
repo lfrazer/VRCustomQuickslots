@@ -103,6 +103,10 @@ extern "C" {
 
 			g_quickslotMgr->ButtonPress(buttonId, deviceId);
 		}
+		else if (type == PapyrusVR::VREventType_Released)
+		{
+			g_quickslotMgr->ButtonRelease(buttonId, deviceId);
+		}
 	}
 
 	void OnVRUpdateEvent(float deltaTime)
@@ -145,6 +149,10 @@ extern "C" {
 			{
 				_MESSAGE("SKSE PostLoad recived, registering for PapyrusVR messages from SkyrimVRTools");
 				g_messaging->RegisterListener(g_pluginHandle, "SkyrimVRTools", OnPapyrusVRMessage);
+			}
+			if (msg->type == SKSEMessagingInterface::kMessage_PostLoadGame || msg->type == SKSEMessagingInterface::kMessage_NewGame)
+			{
+				g_quickslotMgr->SetInGame(true);
 			}
 		}
 	}

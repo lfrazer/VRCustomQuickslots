@@ -85,7 +85,7 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 
 	mTimer.TimerUpdate();
 
-	if (!IsMenuOpen() && hmdPose->bPoseIsValid && leftCtrlPose->bPoseIsValid && rightCtrlPose->bPoseIsValid)
+	if (mInGame || !IsMenuOpen() && hmdPose->bPoseIsValid && leftCtrlPose->bPoseIsValid && rightCtrlPose->bPoseIsValid)
 	{
 		PapyrusVR::Vector3 hmdPos = GetPositionFromVRPose(mHMDPose);
 		PapyrusVR::Matrix33 rotMatrix = CreateRotMatrixAroundY(mHMDPose->mDeviceToAbsoluteTracking);
@@ -146,7 +146,7 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 	const double kHoldActionTime = 2.0;
 
 	// check if relevant button was pressed, or if a menu was open and early exit
-	if (buttonId != mActivateButton || IsMenuOpen())
+	if (buttonId != mActivateButton || IsMenuOpen() || !mInGame)
 	{
 		return;
 	}
@@ -173,27 +173,21 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 
 	if (quickslot)  // if there is one, execute quickslot equip changes
 	{
-		if (quickslot->mButtonHoldTime > kHoldActionTime)
-		{
-			_MESSAGE("Hold button action on quickslot %s !", quickslot->mName.c_str());
-			quickslot->mButtonHoldTime = 0.0;
-		}
-		else if (quickslot->mButtonHoldTime <= 0.0)
+		if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION)
 		{
 			// one action for each hand (right and left)
 			quickslot->DoAction(quickslot->mCommand);
 			quickslot->DoAction(quickslot->mCommandAlt);
-
-			// increase press time on this quickslot
-			quickslot->mButtonHoldTime = mTimer.GetTimeSlice();
 		}
-		else
+		else if(mAllowEditSlots)
 		{
-			// increase press time on this quickslot
-			quickslot->mButtonHoldTime += mTimer.GetTimeSlice();
+			// modify the quickslot with current item/spell if none is set
+			quickslot->SetAction(deviceId);
 		}
 
-
+		// increase press time on this quickslot
+		quickslot->mButtonHoldTime = mTimer.GetLastTime();
+		
 		if (mDebugLogVerb > 0)
 		{
 			_MESSAGE("Found a quickslot at pos (%f,%f,%f) !", controllerPos.x, controllerPos.y, controllerPos.z);
@@ -205,14 +199,65 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 	{
 		_MESSAGE("NO quickslot found pos (%f,%f,%f)", controllerPos.x, controllerPos.y, controllerPos.z);
 	}
+}
+
+
+void	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
+{
+	const double kHoldActionTime = 2.0;
+
+	// check if relevant button was pressed, or if a menu was open and early exit
+	if (buttonId != mActivateButton || IsMenuOpen() || !mInGame)
+	{
+		return;
+	}
+
+	// find quickslot based on current hand 
+	PapyrusVR::TrackedDevicePose* currControllerPose = nullptr;
+
+	if (deviceId == PapyrusVR::VRDevice_LeftController && mLeftControllerPose->bPoseIsValid)
+	{
+		currControllerPose = mLeftControllerPose;
+	}
+	else if (deviceId == PapyrusVR::VRDevice_RightController && mRightControllerPose->bPoseIsValid)
+	{
+		currControllerPose = mRightControllerPose;
+	}
+	else
+	{
+		return;
+	}
+
+	// find the relevant quickslot which is overlapped by the controllers current position
+	PapyrusVR::Vector3 controllerPos = GetPositionFromVRPose(currControllerPose);
+	CQuickslot* quickslot = FindQuickslot(controllerPos, mControllerRadius);
+
+	if (quickslot)
+	{
+
+		if (quickslot->mButtonHoldTime > 0.0 && mTimer.GetLastTime() - quickslot->mButtonHoldTime > kHoldActionTime)
+		{
+			_MESSAGE("Hold button action on quickslot %s !", quickslot->mName.c_str());
+
+			// on long press, unset the quickslot action so the user can modify it later
+			if (mAllowEditSlots)
+			{
+				// trigger haptic response
+				const vr::ETrackedControllerRole deviceToControllerRoleLookup[3] = { vr::ETrackedControllerRole::TrackedControllerRole_Invalid, vr::ETrackedControllerRole::TrackedControllerRole_RightHand, vr::ETrackedControllerRole::TrackedControllerRole_LeftHand };
+				auto controllerId = mVRSystem->GetTrackedDeviceIndexForControllerRole(deviceToControllerRoleLookup[deviceId]);
+				mVRSystem->TriggerHapticPulse(controllerId, 0, 3999);
+
+				quickslot->UnsetAction();
+			}
+		}
+
+	}
 
 	// reset button hold time for all other quickslots
 	for (auto it = mQuickslotArray.begin(); it != mQuickslotArray.end(); ++it)
 	{
-		if (&(*it) != quickslot)
-		{
-			it->mButtonHoldTime = 0.0;
-		}
+		it->mButtonHoldTime = -1.0;
+		
 	}
 
 }
@@ -335,5 +380,45 @@ void CQuickslot::DoAction(const CQuickslotCmd& cmd)
 		CSkyrimConsole::RunCommand(cmd.mCommand.c_str());
 	}
 }
+
+void CQuickslot::SetAction(PapyrusVR::VRDevice deviceId)
+{
+	// convert VRDevice id to skyrim Slot ID (left/right hand)
+	const int deviceToSlotLookup[3] = { 0, SLOT_RIGHTHAND, SLOT_LEFTHAND };
+	const int slot = deviceToSlotLookup[deviceId];
+
+	// set action for only the current hand
+	TESForm* formObj = (*g_thePlayer)->GetEquippedObject(slot == SLOT_LEFTHAND);
+
+	if (formObj)
+	{
+		if (formObj->GetFormType() == kFormType_Weapon)
+		{
+			mCommand.mAction = EQUIP_ITEM;
+		}
+		else
+		{
+			mCommand.mAction = EQUIP_SPELL;
+		}
+
+		mCommand.mSlot = slot;
+		mCommand.mFormID = formObj->formID;
+
+		_MESSAGE("Set new action formid=%x on quickslot %s !", formObj->formID, this->mName.c_str());
+	}
+}
+
+
+void CQuickslot::UnsetAction()
+{
+	mCommand.mAction = NO_ACTION;
+	mCommand.mFormID = 0;
+	mCommandAlt.mAction = NO_ACTION;
+	mCommandAlt.mFormID = 0;
+
+}
+
+
+
 
 

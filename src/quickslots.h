@@ -84,6 +84,9 @@ public:
 
 	void PrintInfo();  // log information about this quickslot (debugging)
 	void DoAction(const CQuickslotCmd& cmd);  // perform set quickslot action (call on button press)
+	void SetAction(PapyrusVR::VRDevice deviceId); // set quickslot action to currently used item or spell
+	void UnsetAction();  // unset the action (remove any action from the slot, the user can later equip it with a new action)
+
 
 protected:
 	PapyrusVR::Vector3	mPosition;		// current position of quickslot (center of sphere)
@@ -118,8 +121,10 @@ public:
 	CQuickslot*		FindQuickslot(const PapyrusVR::Vector3& pos, float radius);
 	void			Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose);
 	void			ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
+	void			ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
 	// check when menu is open, plus for a short delay after it has been closed
 	bool			IsMenuOpen();
+	void			SetInGame(bool flag) { mInGame = flag; }
 
 
 
@@ -145,8 +150,10 @@ private:
 
 	int								mDebugLogVerb = 0;  // debug log verbosity - 0 means no logging
 	int								mHapticOnOverlap = 1;  // haptic feedback on quickslot overlap
+	int								mAllowEditSlots = 1;   // editing quickslots in game allowed?
 	bool							mIsMenuOpen = false; // use events to block quickslots when menu is open, set this flag to true when menu is open
-	double							mMenuLastCloseTime = 0.0; // track the last time the menu was closed
+	bool							mInGame = false; // do not start processing until in-game (after load game or new game event from SKSE)
+	double							mMenuLastCloseTime = -1.0; // track the last time the menu was closed (negative means invalid time / do not track time)
 
 	// constants
 	const double					kMenuBlockDelay = 0.25;  // time in seconds to block actions after menu was closed
