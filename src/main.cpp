@@ -147,11 +147,12 @@ extern "C" {
 		{
 			if (msg->type == SKSEMessagingInterface::kMessage_PostLoad)
 			{
-				_MESSAGE("SKSE PostLoad recived, registering for PapyrusVR messages from SkyrimVRTools");
+				_MESSAGE("SKSE PostLoad message received, registering for PapyrusVR messages from SkyrimVRTools");
 				g_messaging->RegisterListener(g_pluginHandle, "SkyrimVRTools", OnPapyrusVRMessage);
 			}
 			if (msg->type == SKSEMessagingInterface::kMessage_PostLoadGame || msg->type == SKSEMessagingInterface::kMessage_NewGame)
 			{
+				_MESSAGE("SKSE PostLoadGame or NewGame message received, type: %d", msg->type);
 				g_quickslotMgr->SetInGame(true);
 			}
 		}
