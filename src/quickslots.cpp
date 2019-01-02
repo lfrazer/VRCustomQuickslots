@@ -32,20 +32,14 @@
 #include "skse64/GameTypes.h"
 
 
-extern CQuickslotManager* g_quickslotMgr;
-
 CQuickslotManager::CQuickslotManager()
 {
-	mTimer.Init();
-
-
-
 	MenuManager * mm = MenuManager::GetSingleton();
 	if (mm) {
 		mm->MenuOpenCloseEventDispatcher()->AddEventSink(&this->mMenuEventHandler);
 	}
 	else {
-		_MESSAGE("Failed to register SKSE AllMenuEventHandler!");
+		QSLOG_ERR("Failed to register SKSE AllMenuEventHandler!");
 	}
 
 	GetVRSystem();
@@ -54,7 +48,7 @@ CQuickslotManager::CQuickslotManager()
 
 bool	CQuickslotManager::IsMenuOpen()
 { 
-	return mIsMenuOpen || mMenuLastCloseTime + kMenuBlockDelay > mTimer.GetLastTime(); 
+	return mIsMenuOpen || mMenuLastCloseTime + kMenuBlockDelay > CUtil::GetSingleton().GetLastTime(); 
 }
 
 void  CQuickslotManager::GetVRSystem()
@@ -67,11 +61,11 @@ void  CQuickslotManager::GetVRSystem()
 
 	if (mVRSystem)
 	{
-		_MESSAGE("Found VR System ptr");
+		QSLOG("Found VR System ptr");
 	}
 	else if(eError != mLastVRError)
 	{
-		_MESSAGE("VR System ptr not found, last unique error: %d", eError);
+		QSLOG_ERR("VR System ptr not found, last unique error: %d", eError);
 		mLastVRError = eError;
 	}
 }
@@ -83,7 +77,7 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 	mLeftControllerPose = leftCtrlPose;
 	mRightControllerPose = rightCtrlPose;
 
-	mTimer.TimerUpdate();
+	CUtil::GetSingleton().Update();
 
 	if (mInGame && !IsMenuOpen() && hmdPose->bPoseIsValid && leftCtrlPose->bPoseIsValid && rightCtrlPose->bPoseIsValid)
 	{
@@ -116,18 +110,16 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 				if (quickslot)
 				{
 					// Do haptic response (but not constantly, check for timeout)
-					if (mTimer.GetLastTime() - quickslot->mLastOverlapTime > kHapticTimeout)
+					if (CUtil::GetSingleton().GetLastTime() - quickslot->mLastOverlapTime > kHapticTimeout)
 					{
 						auto controllerId = mVRSystem->GetTrackedDeviceIndexForControllerRole( controllerRoles[i]);
 						mVRSystem->TriggerHapticPulse(controllerId, 0, 3999);
 
-						if (mDebugLogVerb > 0)
-						{
-							_MESSAGE("Triggered haptic pulse on controller %d", controllerId);
-						}
+						QSLOG_INFO("Triggered haptic pulse on controller %d", controllerId);
+						
 					}
 
-					quickslot->mLastOverlapTime = mTimer.GetLastTime();
+					quickslot->mLastOverlapTime = CUtil::GetSingleton().GetLastTime();
 
 				}
 			}
@@ -186,18 +178,15 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 		}
 
 		// increase press time on this quickslot
-		quickslot->mButtonHoldTime = mTimer.GetLastTime();
+		quickslot->mButtonHoldTime = CUtil::GetSingleton().GetLastTime();
 		
-		if (mDebugLogVerb > 0)
-		{
-			_MESSAGE("Found a quickslot at pos (%f,%f,%f) !", controllerPos.x, controllerPos.y, controllerPos.z);
-
-			quickslot->PrintInfo();
-		}
+		QSLOG_INFO("Found a quickslot at pos (%f,%f,%f) !", controllerPos.x, controllerPos.y, controllerPos.z);
+		quickslot->PrintInfo();
+		
 	}
-	else if(mDebugLogVerb > 0)
+	else
 	{
-		_MESSAGE("NO quickslot found pos (%f,%f,%f)", controllerPos.x, controllerPos.y, controllerPos.z);
+		QSLOG_INFO("NO quickslot found pos (%f,%f,%f)", controllerPos.x, controllerPos.y, controllerPos.z);
 	}
 }
 
@@ -235,9 +224,9 @@ void	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 	if (quickslot)
 	{
 
-		if (quickslot->mButtonHoldTime > 0.0 && mTimer.GetLastTime() - quickslot->mButtonHoldTime > kHoldActionTime)
+		if (quickslot->mButtonHoldTime > 0.0 && CUtil::GetSingleton().GetLastTime() - quickslot->mButtonHoldTime > kHoldActionTime)
 		{
-			_MESSAGE("Hold button action on quickslot %s !", quickslot->mName.c_str());
+			QSLOG_INFO("Hold button action on quickslot %s !", quickslot->mName.c_str());
 
 			// on long press, unset the quickslot action so the user can modify it later
 			if (mAllowEditSlots)
@@ -308,7 +297,7 @@ void CQuickslotManager::AllMenuEventHandler::MenuOpenEvent(const char* menuName)
 	}
 	else
 	{
-		g_quickslotMgr->mIsMenuOpen = true;
+		CQuickslotManager::GetSingleton().mIsMenuOpen = true;
 	}
 
 	//_MESSAGE("MenuOpenEvent: %s", menuName);
@@ -324,8 +313,8 @@ void CQuickslotManager::AllMenuEventHandler::MenuCloseEvent(const char* menuName
 	}
 	else
 	{
-		g_quickslotMgr->mMenuLastCloseTime = g_quickslotMgr->mTimer.GetLastTime();
-		g_quickslotMgr->mIsMenuOpen = false;
+		CQuickslotManager::GetSingleton().mMenuLastCloseTime = CUtil::GetSingleton().GetLastTime();
+		CQuickslotManager::GetSingleton().mIsMenuOpen = false;
 	}
 
 	//_MESSAGE("MenuCloseEvent: %s", menuName);
@@ -334,7 +323,7 @@ void CQuickslotManager::AllMenuEventHandler::MenuCloseEvent(const char* menuName
 
 void CQuickslot::PrintInfo()
 {
-	_MESSAGE("Quickslot (%s) position: (%f,%f,%f) radius: %f", this->mName.c_str(), mPosition.x, mPosition.y, mPosition.z, mRadius);
+	QSLOG_INFO("Quickslot (%s) position: (%f,%f,%f) radius: %f", this->mName.c_str(), mPosition.x, mPosition.y, mPosition.z, mRadius);
 }
 
 void CQuickslot::DoAction(const CQuickslotCmd& cmd)
@@ -365,7 +354,7 @@ void CQuickslot::DoAction(const CQuickslotCmd& cmd)
 		}
 		else
 		{
-			_MESSAGE("Invalid slot Type %d for spell: %x equip.", cmd.mSlot, cmd.mFormID);
+			QSLOG_ERR("Invalid slot Type %d for spell: %x equip.", cmd.mSlot, cmd.mFormID);
 		}
 	}
 	else if (cmd.mAction == EQUIP_SHOUT)
@@ -404,7 +393,7 @@ void CQuickslot::SetAction(PapyrusVR::VRDevice deviceId)
 		mCommand.mSlot = slot;
 		mCommand.mFormID = formObj->formID;
 
-		_MESSAGE("Set new action formid=%x on quickslot %s !", formObj->formID, this->mName.c_str());
+		QSLOG("Set new action formid=%x on quickslot %s !", formObj->formID, this->mName.c_str());
 	}
 }
 

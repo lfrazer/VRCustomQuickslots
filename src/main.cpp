@@ -31,6 +31,7 @@
 
 
 #include "quickslots.h"
+#include "quickslotutil.h"
 
 
 static PluginHandle					g_pluginHandle = kPluginHandle_Invalid;
@@ -39,6 +40,7 @@ static SKSEMessagingInterface		* g_messaging = NULL;
 
 PapyrusVRAPI*	g_papyrusvr = nullptr;
 CQuickslotManager* g_quickslotMgr = nullptr;
+CUtil*			g_Util = nullptr;
 
 extern "C" {
 
@@ -78,6 +80,10 @@ extern "C" {
 	}
 
 	bool SKSEPlugin_Load(const SKSEInterface * skse) {	// Called by SKSE to load this plugin
+		
+		g_quickslotMgr = new CQuickslotManager;
+		g_Util = new CUtil;
+		
 		_MESSAGE("VRCustomQuickslots loaded");
 
 		g_papyrus = (SKSEPapyrusInterface *)skse->QueryInterface(kInterface_Papyrus);
@@ -87,7 +93,7 @@ extern "C" {
 		g_messaging = (SKSEMessagingInterface*)skse->QueryInterface(kInterface_Messaging);
 		g_messaging->RegisterListener(g_pluginHandle, "SKSE", OnSKSEMessage);
 
-		g_quickslotMgr = new CQuickslotManager;
+
 
 		//wait for PapyrusVR init (during PostPostLoad SKSE Message)
 
@@ -132,6 +138,8 @@ extern "C" {
 				_MESSAGE("Reading XML quickslots config vrcustomquickslots.xml");
 				g_quickslotMgr->ReadConfig("Data\\SKSE\\Plugins\\vrcustomquickslots.xml");
 
+				QSLOG("XML config load complete.");
+
 				//Registers for PoseUpdates
 				//g_papyrusvr->RegisterPoseUpdateListener(OnPoseUpdate);  // deprecated
 				g_papyrusvr->GetVRManager()->RegisterVRButtonListener(OnVRButtonEvent);
@@ -147,12 +155,12 @@ extern "C" {
 		{
 			if (msg->type == SKSEMessagingInterface::kMessage_PostLoad)
 			{
-				_MESSAGE("SKSE PostLoad message received, registering for PapyrusVR messages from SkyrimVRTools");
+				_MESSAGE("SKSE PostLoad message received, registering for PapyrusVR messages from SkyrimVRTools");  // This log msg may happen before XML is loaded
 				g_messaging->RegisterListener(g_pluginHandle, "SkyrimVRTools", OnPapyrusVRMessage);
 			}
 			if (msg->type == SKSEMessagingInterface::kMessage_PostLoadGame || msg->type == SKSEMessagingInterface::kMessage_NewGame)
 			{
-				_MESSAGE("SKSE PostLoadGame or NewGame message received, type: %d", msg->type);
+				QSLOG("SKSE PostLoadGame or NewGame message received, type: %d", msg->type);
 				g_quickslotMgr->SetInGame(true);
 			}
 		}

@@ -25,7 +25,8 @@
 #include <string>
 #include <vector>
 
-#include "skse64\PapyrusEvents.h"
+#include "skse64/PapyrusEvents.h"
+#include "common/ISingleton.h"
 
 #include "timer.h"
 
@@ -102,7 +103,7 @@ protected:
 };
 
 
-class CQuickslotManager
+class CQuickslotManager: public ISingleton<CQuickslotManager>
 {
 	friend class AllMenuEventHandler;
 
@@ -133,7 +134,6 @@ private:
 	void	GetVRSystem();
 
 	std::vector<CQuickslot>			mQuickslotArray;  // array of all quickslot objects
-	CTimer							mTimer;
 
 	int								mLastVRError = 0;
 	vr::IVRSystem*					mVRSystem = nullptr;

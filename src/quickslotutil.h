@@ -22,6 +22,58 @@
 #pragma once
 
 #include "api/OpenVRTypes.h"
+#include "common/ISingleton.h"
+#include "timer.h"
+
+// Log config & macros
+enum eLogLevels
+{
+	QSLOGLEVEL_ERR = 0,
+	QSLOGLEVEL_WARN,
+	QSLOGLEVEL_INFO,
+};
+
+#define QSLOG(fmt, ...) CUtil::GetSingleton().Log(QSLOGLEVEL_WARN, fmt, ##__VA_ARGS__)
+#define QSLOG_ERR(fmt, ...) CUtil::GetSingleton().Log(QSLOGLEVEL_ERR, fmt, ##__VA_ARGS__)
+#define QSLOG_INFO(fmt, ...) CUtil::GetSingleton().Log(QSLOGLEVEL_INFO, fmt, ##__VA_ARGS__)
+
+// Util class
+
+class CUtil : public ISingleton<CUtil>
+{
+public:
+	double	GetLastTime() { return mTimer.GetLastTime();  }
+	void	Update() { mTimer.TimerUpdate(); }
+	void	SetLogLevel(int level) { mLogLevel = level; }
+
+	void Log(const int msgLogLevel, const char * fmt, ...) // write to message log containing time 
+	{
+		if (msgLogLevel > mLogLevel)
+		{
+			return;
+		}
+
+		va_list args;
+		char logBuffer[4096];
+
+		sprintf_s(logBuffer, "[%f] ", mTimer.GetLastTime());
+		const size_t logWriteOffset = strlen(logBuffer);
+
+		va_start(args, fmt);
+		vsprintf_s(logBuffer + logWriteOffset, sizeof(logBuffer) - logWriteOffset, fmt, args);
+		va_end(args);
+
+		_MESSAGE(logBuffer);
+	}
+
+
+private:
+	CTimer	mTimer;
+	int		mLogLevel = 0;
+};
+
+
+// Math inline functions
 
 // distance between two vector 3 squared
 inline float DistBetweenVecSqr(const PapyrusVR::Vector3& a, const PapyrusVR::Vector3& b)

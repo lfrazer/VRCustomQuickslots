@@ -20,6 +20,7 @@
 */
 
 #include "quickslots.h"
+#include "quickslotutil.h"
 #include "tinyxml2.h"
 
 
@@ -54,6 +55,8 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 			mControllerRadius = defaultRadius;
 
 			elem->QueryFloatAttribute("controllerradius", &mControllerRadius);
+
+			CUtil::GetSingleton().SetLogLevel(mDebugLogVerb);
 		}
 
 		else if (strcmp(elem->Name(), "quickslot") == 0)
@@ -115,13 +118,13 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 			mQuickslotArray.push_back(quickslot);
 
 			quickslotCount++;
-			_MESSAGE("Read in quickslot #%d, info below:", quickslotCount);
+			QSLOG_INFO("Read in quickslot #%d, info below:", quickslotCount);
 			quickslot.PrintInfo();
 
 		}
 	}
 
-	_MESSAGE("Finished reading %s - debugloglevel=%d", filename, mDebugLogVerb);
+	QSLOG("Finished reading %s - debugloglevel=%d", filename, mDebugLogVerb);
 
 	return true;
 }
