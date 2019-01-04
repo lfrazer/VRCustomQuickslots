@@ -70,6 +70,30 @@ void  CQuickslotManager::GetVRSystem()
 	}
 }
 
+void	CQuickslotManager::UpdateHaptics()
+{
+	const unsigned short kVRHapticConstant = 2000;  // max value is 3999 but ue4 suggest max 2000? - time in microseconds to pulse per frame, also described by Valve as "strength"
+
+	if (mVRSystem)
+	{
+		for (int i = 0; i < 2; ++i)
+		{
+			if (mControllerHapticTime[i] > CUtil::GetSingleton().GetLastTime())
+			{
+				// haptic remaining times are indexed in array by (ETrackedControllerRole enum value - 1) - so add 1 to loop index i to get the correct value - see StartHaptics()
+				auto controllerId = mVRSystem->GetTrackedDeviceIndexForControllerRole( (vr::ETrackedControllerRole)(i + 1) );
+				mVRSystem->TriggerHapticPulse(controllerId, 0, kVRHapticConstant);
+			}
+		}
+	}
+}
+
+void	CQuickslotManager::StartHaptics(vr::ETrackedControllerRole controller, double timeLength)
+{
+	mControllerHapticTime[controller - 1] = CUtil::GetSingleton().GetLastTime() + timeLength;
+
+	QSLOG_INFO("Started haptic feedback for %f seconds on controller %d", timeLength, controller);
+}
 
 void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose)
 {
@@ -78,6 +102,7 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 	mRightControllerPose = rightCtrlPose;
 
 	CUtil::GetSingleton().Update();
+	UpdateHaptics();
 
 	if (mInGame && !IsMenuOpen() && hmdPose->bPoseIsValid && leftCtrlPose->bPoseIsValid && rightCtrlPose->bPoseIsValid)
 	{
@@ -111,12 +136,8 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 				{
 					// Do haptic response (but not constantly, check for timeout)
 					if (CUtil::GetSingleton().GetLastTime() - quickslot->mLastOverlapTime > kHapticTimeout)
-					{
-						auto controllerId = mVRSystem->GetTrackedDeviceIndexForControllerRole( controllerRoles[i]);
-						mVRSystem->TriggerHapticPulse(controllerId, 0, 3999);
-
-						QSLOG_INFO("Triggered haptic pulse on controller %d", controllerId);
-						
+					{						
+						StartHaptics(controllerRoles[i], 0.1);						
 					}
 
 					quickslot->mLastOverlapTime = CUtil::GetSingleton().GetLastTime();
@@ -135,7 +156,6 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 
 void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
 {
-	const double kHoldActionTime = 2.0;
 
 	// check if relevant button was pressed, or if a menu was open and early exit
 	if (buttonId != mActivateButton || IsMenuOpen() || !mInGame)
@@ -193,8 +213,6 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 
 void	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
 {
-	const double kHoldActionTime = 2.0;
-
 	// check if relevant button was pressed, or if a menu was open and early exit
 	if (buttonId != mActivateButton || IsMenuOpen() || !mInGame)
 	{
@@ -224,7 +242,7 @@ void	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 	if (quickslot)
 	{
 
-		if (quickslot->mButtonHoldTime > 0.0 && CUtil::GetSingleton().GetLastTime() - quickslot->mButtonHoldTime > kHoldActionTime)
+		if (quickslot->mButtonHoldTime > 0.0 && CUtil::GetSingleton().GetLastTime() - quickslot->mButtonHoldTime > mLongPressTime)
 		{
 			QSLOG_INFO("Hold button action on quickslot %s !", quickslot->mName.c_str());
 
@@ -233,8 +251,8 @@ void	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 			{
 				// trigger haptic response
 				const vr::ETrackedControllerRole deviceToControllerRoleLookup[3] = { vr::ETrackedControllerRole::TrackedControllerRole_Invalid, vr::ETrackedControllerRole::TrackedControllerRole_RightHand, vr::ETrackedControllerRole::TrackedControllerRole_LeftHand };
-				auto controllerId = mVRSystem->GetTrackedDeviceIndexForControllerRole(deviceToControllerRoleLookup[deviceId]);
-				mVRSystem->TriggerHapticPulse(controllerId, 0, 3999);
+
+				StartHaptics(deviceToControllerRoleLookup[deviceId], 0.5);
 
 				quickslot->UnsetAction();
 			}
@@ -372,6 +390,7 @@ void CQuickslot::DoAction(const CQuickslotCmd& cmd)
 
 void CQuickslot::SetAction(PapyrusVR::VRDevice deviceId)
 {
+	const vr::ETrackedControllerRole deviceToControllerRoleLookup[3] = { vr::ETrackedControllerRole::TrackedControllerRole_Invalid, vr::ETrackedControllerRole::TrackedControllerRole_RightHand, vr::ETrackedControllerRole::TrackedControllerRole_LeftHand };
 	// convert VRDevice id to skyrim Slot ID (left/right hand)
 	const int deviceToSlotLookup[3] = { 0, SLOT_RIGHTHAND, SLOT_LEFTHAND };
 	const int slot = deviceToSlotLookup[deviceId];
@@ -392,6 +411,9 @@ void CQuickslot::SetAction(PapyrusVR::VRDevice deviceId)
 
 		mCommand.mSlot = slot;
 		mCommand.mFormID = formObj->formID;
+
+		
+		CQuickslotManager::GetSingleton().StartHaptics(deviceToControllerRoleLookup[deviceId], 0.5);
 
 		QSLOG("Set new action formid=%x on quickslot %s !", formObj->formID, this->mName.c_str());
 	}

@@ -22,6 +22,7 @@
 #pragma once
 #include "api/PapyrusVRTypes.h"
 #include "api/OpenVRTypes.h"
+#include "api/openvr.h"
 #include <string>
 #include <vector>
 
@@ -125,9 +126,11 @@ public:
 	void			ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
 	// check when menu is open, plus for a short delay after it has been closed
 	bool			IsMenuOpen();
+
+	// start haptic response for <timeLenght>, pass in LeftHand or RightHand controller from enum
+	void			StartHaptics(vr::ETrackedControllerRole controller, double timeLength); 
+	void			UpdateHaptics(); // called every frame to update haptic response
 	void			SetInGame(bool flag) { mInGame = flag; }
-
-
 
 private:
 
@@ -154,7 +157,11 @@ private:
 	bool							mIsMenuOpen = false; // use events to block quickslots when menu is open, set this flag to true when menu is open
 	bool							mInGame = false; // do not start processing until in-game (after load game or new game event from SKSE)
 	double							mMenuLastCloseTime = -1.0; // track the last time the menu was closed (negative means invalid time / do not track time)
+	double							mLongPressTime = 5.0;  // length of time to trigger long press action
+	double							mControllerHapticTime[2] = { 0.0 };
+
 
 	// constants
 	const double					kMenuBlockDelay = 0.25;  // time in seconds to block actions after menu was closed
+
 };

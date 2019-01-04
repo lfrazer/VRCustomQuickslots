@@ -51,6 +51,7 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 			elem->QueryIntAttribute("debugloglevel", &mDebugLogVerb);
 			elem->QueryIntAttribute("hapticfeedback", &mHapticOnOverlap);
 			elem->QueryIntAttribute("alloweditslots", &mAllowEditSlots);
+			elem->QueryDoubleAttribute("longpresstime", &mLongPressTime);
 
 			mControllerRadius = defaultRadius;
 
