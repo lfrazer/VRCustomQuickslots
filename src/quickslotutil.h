@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include "api/PapyrusVRTypes.h"
 #include "api/OpenVRTypes.h"
 #include "common/ISingleton.h"
 #include "timer.h"
@@ -56,7 +57,7 @@ public:
 		va_list args;
 		char logBuffer[4096];
 
-		sprintf_s(logBuffer, "[%f] ", mTimer.GetLastTime());
+		sprintf_s(logBuffer, "[%.2f] ", mTimer.GetLastTime());
 		const size_t logWriteOffset = strlen(logBuffer);
 
 		va_start(args, fmt);

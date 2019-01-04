@@ -1,4 +1,5 @@
 #include "console.h"
+#include "quickslotutil.h"
 
 // Thanks to DSN (Dragonborn Speaks Naturally) for the method of running console commands
 
@@ -7,8 +8,9 @@ IMenu* CSkyrimConsole::sConsoleMenu = nullptr;
 
 void CSkyrimConsole::RunCommand(const char* cmd)
 {
-	if (!sConsoleMenu) {
-		_MESSAGE("Trying to create Console menu");
+	if (!sConsoleMenu) 
+	{
+		QSLOG_INFO("Trying to create Console menu");
 		sConsoleMenu = SKSEMenuManager::GetSingleton()->GetOrCreateMenu("Console");
 	}
 
@@ -33,7 +35,7 @@ void CSkyrimConsole::RunCommand(const char* cmd)
 	}
 	else
 	{
-		_MESSAGE("Unable to find Console menu");
+		QSLOG_ERR("Unable to find Console menu");
 	}
 }
 
