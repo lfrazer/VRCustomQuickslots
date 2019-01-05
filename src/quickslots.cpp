@@ -306,7 +306,7 @@ EventResult CQuickslotManager::AllMenuEventHandler::ReceiveEvent(MenuOpenCloseEv
 
 bool CQuickslotManager::AllMenuEventHandler::IsIgnoredMenu(const char* name)
 {
-	return streq(name, "HUD Menu") || streq(name, "WSEnemyMeters") || streq(name, "WSDebugOverlay") || streq(name, "Overlay Interaction Menu") || streq(name, "Overlay Menu")
+	return streq(name, "WSActivateRollover") || streq(name, "Fader Menu") || streq(name, "HUD Menu") || streq(name, "WSEnemyMeters") || streq(name, "WSDebugOverlay") || streq(name, "Overlay Interaction Menu") || streq(name, "Overlay Menu")
 		|| streq(name, "StatsMenu") || streq(name, "TitleSequence Menu") || streq(name, "Top Menu");
 	
 }
@@ -315,25 +315,23 @@ void CQuickslotManager::AllMenuEventHandler::MenuOpenEvent(const char* menuName)
 {
 	if (!IsIgnoredMenu(menuName))
 	{
-		//std::string name = menuName;
 	
 		CQuickslotManager::GetSingleton().mIsMenuOpen = true;
 	}
 
-	//_MESSAGE("MenuOpenEvent: %s", menuName);
+	//QSLOG_INFO("MenuOpenEvent: %s", menuName);
 }
 
 void CQuickslotManager::AllMenuEventHandler::MenuCloseEvent(const char* menuName)
 {
 	if (!IsIgnoredMenu(menuName))
 	{
-		//std::string name = menuName;
 
 		CQuickslotManager::GetSingleton().mMenuLastCloseTime = CUtil::GetSingleton().GetLastTime();
 		CQuickslotManager::GetSingleton().mIsMenuOpen = false;
 	}
 
-	//_MESSAGE("MenuCloseEvent: %s", menuName);
+	//QSLOG_INFO("MenuCloseEvent: %s", menuName);
 }
 
 
