@@ -73,13 +73,20 @@ private:
 	int		mLogLevel = 0;
 };
 
+// General inline funcs
+
+inline bool streq(const char* str1, const char* str2)
+{
+	return strcmp(str1, str2) == 0;
+}
+
 
 // Math inline functions
 
 // distance between two vector 3 squared
 inline float DistBetweenVecSqr(const PapyrusVR::Vector3& a, const PapyrusVR::Vector3& b)
 {
-	PapyrusVR::Vector3 diffVec = a - b;
+	const PapyrusVR::Vector3 diffVec = a - b;
 	return (diffVec.x*diffVec.x + diffVec.y*diffVec.y + diffVec.z*diffVec.z);
 }
 

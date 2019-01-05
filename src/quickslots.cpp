@@ -137,7 +137,7 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 					// Do haptic response (but not constantly, check for timeout)
 					if (CUtil::GetSingleton().GetLastTime() - quickslot->mLastOverlapTime > kHapticTimeout)
 					{						
-						StartHaptics(controllerRoles[i], 0.1);						
+						StartHaptics(controllerRoles[i], 0.05);						
 					}
 
 					quickslot->mLastOverlapTime = CUtil::GetSingleton().GetLastTime();
@@ -304,17 +304,19 @@ EventResult CQuickslotManager::AllMenuEventHandler::ReceiveEvent(MenuOpenCloseEv
 	return EventResult::kEvent_Continue;
 }
 
+bool CQuickslotManager::AllMenuEventHandler::IsIgnoredMenu(const char* name)
+{
+	return streq(name, "HUD Menu") || streq(name, "WSEnemyMeters") || streq(name, "WSDebugOverlay") || streq(name, "Overlay Interaction Menu") || streq(name, "Overlay Menu")
+		|| streq(name, "StatsMenu") || streq(name, "TitleSequence Menu") || streq(name, "Top Menu");
+	
+}
+
 void CQuickslotManager::AllMenuEventHandler::MenuOpenEvent(const char* menuName)
 {
-
-	std::string name = menuName;
-
-	if (name == "HUD Menu" || name == "WSEnemyMeters" || name == "WSDebugOverlay" || name == "Overlay Interaction Menu" || name == "Overlay Menu" || name == "StatsMenu" || name == "TitleSequence Menu" || name == "Top Menu")
+	if (!IsIgnoredMenu(menuName))
 	{
-		return;
-	}
-	else
-	{
+		//std::string name = menuName;
+	
 		CQuickslotManager::GetSingleton().mIsMenuOpen = true;
 	}
 
@@ -323,14 +325,10 @@ void CQuickslotManager::AllMenuEventHandler::MenuOpenEvent(const char* menuName)
 
 void CQuickslotManager::AllMenuEventHandler::MenuCloseEvent(const char* menuName)
 {
-	std::string name = menuName;
+	if (!IsIgnoredMenu(menuName))
+	{
+		//std::string name = menuName;
 
-	if (name == "HUD Menu" || name == "WSEnemyMeters" || name == "WSDebugOverlay" || name == "Overlay Interaction Menu" || name == "Overlay Menu" || name == "StatsMenu" || name == "TitleSequence Menu" || name == "Top Menu")
-	{
-		return;
-	}
-	else
-	{
 		CQuickslotManager::GetSingleton().mMenuLastCloseTime = CUtil::GetSingleton().GetLastTime();
 		CQuickslotManager::GetSingleton().mIsMenuOpen = false;
 	}

@@ -114,6 +114,7 @@ class CQuickslotManager: public ISingleton<CQuickslotManager>
 		virtual EventResult	ReceiveEvent(MenuOpenCloseEvent * evn, EventDispatcher<MenuOpenCloseEvent> * dispatcher) override;
 		void MenuOpenEvent(const char* menuName);
 		void MenuCloseEvent(const char* menuName);
+		bool IsIgnoredMenu(const char* menuName);
 	};
 
 public:
