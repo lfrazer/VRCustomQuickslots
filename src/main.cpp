@@ -42,6 +42,8 @@ PapyrusVRAPI*	g_papyrusvr = nullptr;
 CQuickslotManager* g_quickslotMgr = nullptr;
 CUtil*			g_Util = nullptr;
 
+const char* kConfigFile = "Data\\SKSE\\Plugins\\vrcustomquickslots.xml";
+
 extern "C" {
 
 	void OnSKSEMessage(SKSEMessagingInterface::Message* msg);
@@ -136,7 +138,7 @@ extern "C" {
 				g_papyrusvr = (PapyrusVRAPI*)msg->data;
 
 				_MESSAGE("Reading XML quickslots config vrcustomquickslots.xml");
-				g_quickslotMgr->ReadConfig("Data\\SKSE\\Plugins\\vrcustomquickslots.xml");
+				g_quickslotMgr->ReadConfig(kConfigFile);
 
 				QSLOG("XML config load complete.");
 
@@ -158,10 +160,19 @@ extern "C" {
 				_MESSAGE("SKSE PostLoad message received, registering for PapyrusVR messages from SkyrimVRTools");  // This log msg may happen before XML is loaded
 				g_messaging->RegisterListener(g_pluginHandle, "SkyrimVRTools", OnPapyrusVRMessage);
 			}
-			if (msg->type == SKSEMessagingInterface::kMessage_PostLoadGame || msg->type == SKSEMessagingInterface::kMessage_NewGame)
+			else if (msg->type == SKSEMessagingInterface::kMessage_PostLoadGame || msg->type == SKSEMessagingInterface::kMessage_NewGame)
 			{
 				QSLOG("SKSE PostLoadGame or NewGame message received, type: %d", msg->type);
 				g_quickslotMgr->SetInGame(true);
+			}
+			else if (msg->type == SKSEMessagingInterface::kMessage_SaveGame)
+			{
+				QSLOG("SKSE SaveGame message received.");
+
+				if (g_quickslotMgr->AllowEdit())
+				{
+					g_quickslotMgr->WriteConfig(kConfigFile);
+				}
 			}
 		}
 	}

@@ -121,6 +121,7 @@ public:
 
 	CQuickslotManager();
 	bool			ReadConfig(const char* filename);
+	bool			WriteConfig(const char* filename);
 	CQuickslot*		FindQuickslot(const PapyrusVR::Vector3& pos, float radius);
 	void			Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose);
 	void			ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
@@ -132,6 +133,7 @@ public:
 	void			StartHaptics(vr::ETrackedControllerRole controller, double timeLength); 
 	void			UpdateHaptics(); // called every frame to update haptic response
 	void			SetInGame(bool flag) { mInGame = flag; }
+	int				AllowEdit() const { return mAllowEditSlots; }
 
 private:
 
@@ -155,6 +157,7 @@ private:
 	int								mDebugLogVerb = 0;  // debug log verbosity - 0 means no logging
 	int								mHapticOnOverlap = 1;  // haptic feedback on quickslot overlap
 	int								mAllowEditSlots = 1;   // editing quickslots in game allowed?
+	float							mDefaultRadius = 0.1f;
 	bool							mIsMenuOpen = false; // use events to block quickslots when menu is open, set this flag to true when menu is open
 	bool							mInGame = false; // do not start processing until in-game (after load game or new game event from SKSE)
 	double							mMenuLastCloseTime = -1.0; // track the last time the menu was closed (negative means invalid time / do not track time)
