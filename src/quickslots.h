@@ -161,7 +161,7 @@ private:
 	bool							mIsMenuOpen = false; // use events to block quickslots when menu is open, set this flag to true when menu is open
 	bool							mInGame = false; // do not start processing until in-game (after load game or new game event from SKSE)
 	double							mMenuLastCloseTime = -1.0; // track the last time the menu was closed (negative means invalid time / do not track time)
-	double							mLongPressTime = 5.0;  // length of time to trigger long press action
+	double							mLongPressTime = 3.0;  // length of time to trigger long press action
 	double							mControllerHapticTime[2] = { 0.0 };
 
 

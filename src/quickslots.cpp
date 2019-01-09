@@ -191,11 +191,6 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 			quickslot->DoAction(quickslot->mCommand);
 			quickslot->DoAction(quickslot->mCommandAlt);
 		}
-		else if(mAllowEditSlots)
-		{
-			// modify the quickslot with current item/spell if none is set
-			quickslot->SetAction(deviceId);
-		}
 
 		// increase press time on this quickslot
 		quickslot->mButtonHoldTime = CUtil::GetSingleton().GetLastTime();
@@ -254,7 +249,16 @@ void	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 
 				StartHaptics(deviceToControllerRoleLookup[deviceId], 0.5);
 
-				quickslot->UnsetAction();
+				// Empty slot if it is bound to an action, otherwise modify it
+				if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION)
+				{
+					quickslot->UnsetAction();
+				}
+				else // modify the quickslot with current item/spell if none is set
+				{
+					quickslot->SetAction(deviceId);
+				}
+
 			}
 		}
 
@@ -407,9 +411,6 @@ void CQuickslot::SetAction(PapyrusVR::VRDevice deviceId)
 
 		mCommand.mSlot = slot;
 		mCommand.mFormID = formObj->formID;
-
-		
-		CQuickslotManager::GetSingleton().StartHaptics(deviceToControllerRoleLookup[deviceId], 0.5);
 
 		QSLOG("Set new action formid=%x on quickslot %s !", formObj->formID, this->mName.c_str());
 	}

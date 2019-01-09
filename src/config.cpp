@@ -135,6 +135,9 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 
 	// Start document
 	tinyxml2::XMLDocument xmldoc;
+	//tinyxml2::XMLDeclaration* declaration = xmldoc.NewDeclaration();
+	//xmldoc.InsertFirstChild(declaration);
+
 	tinyxml2::XMLElement* root = xmldoc.NewElement("vrcustomquickslots");
 	xmldoc.InsertFirstChild(root);
 
@@ -150,7 +153,7 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 	root->InsertFirstChild(options);
 
 	// lambda func for processing command actions and writing to XML (will be used in loop below)
-	auto WriteAction = [&](const CQuickslot::CQuickslotCmd& cmd, tinyxml2::XMLElement* quickslotElem)
+	auto WriteAction = [&](const CQuickslot::CQuickslotCmd& cmd, tinyxml2::XMLElement* qselem)
 	{
 		tinyxml2::XMLElement* actionElem = nullptr;
 
@@ -183,7 +186,7 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 		
 		actionElem->SetAttribute("slot", cmd.mSlot);
 
-		quickslotElem->InsertEndChild(actionElem);
+		qselem->InsertEndChild(actionElem);
 
 	};
 
@@ -195,9 +198,10 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 		// do quickslot settings
 		quickslotElem->SetAttribute("name", it->mName.c_str());
 		quickslotElem->SetAttribute("radius", it->mRadius);
-		quickslotElem->SetAttribute("posx", it->mPosition.x);
-		quickslotElem->SetAttribute("posy", it->mPosition.y);
-		quickslotElem->SetAttribute("posz", it->mPosition.z);
+		// IMPORTANT: write the origin position (pre-transformed) not mPosition
+		quickslotElem->SetAttribute("posx", it->mOrigin.x);
+		quickslotElem->SetAttribute("posy", it->mOrigin.y);
+		quickslotElem->SetAttribute("posz", it->mOrigin.z);
 
 		// do quickslot actions
 		WriteAction(it->mCommand, quickslotElem);
