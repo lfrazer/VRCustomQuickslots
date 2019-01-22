@@ -126,12 +126,15 @@ public:
 	void			Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose);
 	void			ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
 	void			ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
+	void			Reset(); // Reset quickslot manager data
+
 	// check when menu is open, plus for a short delay after it has been closed
 	bool			IsMenuOpen();
 
 	// start haptic response for <timeLenght>, pass in LeftHand or RightHand controller from enum
 	void			StartHaptics(vr::ETrackedControllerRole controller, double timeLength); 
 	void			UpdateHaptics(); // called every frame to update haptic response
+	int				GetEffectiveSlot(int inSlot); // Get effective slot to equip with, this mainly can change due to left handed mode and Skyrim VR's awkward left handed mode implementation
 	void			SetInGame(bool flag) { mInGame = flag; }
 	int				AllowEdit() const { return mAllowEditSlots; }
 
@@ -157,6 +160,7 @@ private:
 	int								mDebugLogVerb = 0;  // debug log verbosity - 0 means no logging
 	int								mHapticOnOverlap = 1;  // haptic feedback on quickslot overlap
 	int								mAllowEditSlots = 1;   // editing quickslots in game allowed?
+	int								mLeftHandedMode = 0;  // left handed mode? 
 	float							mDefaultRadius = 0.1f;
 	bool							mIsMenuOpen = false; // use events to block quickslots when menu is open, set this flag to true when menu is open
 	bool							mInGame = false; // do not start processing until in-game (after load game or new game event from SKSE)

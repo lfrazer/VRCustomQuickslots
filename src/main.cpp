@@ -24,6 +24,7 @@
 
 #include "common/IDebugLog.h"
 #include <shlobj.h>				// for use of CSIDL_MYCODUMENTS
+#include <algorithm>
 
 //Headers under api/ folder
 #include "api/PapyrusVRAPI.h"
@@ -43,6 +44,8 @@ CQuickslotManager* g_quickslotMgr = nullptr;
 CUtil*			g_Util = nullptr;
 
 const char* kConfigFile = "Data\\SKSE\\Plugins\\vrcustomquickslots.xml";
+const char* kConfigFileUniqueId = "Data\\SKSE\\Plugins\\vrcustomquickslots_%s.xml";
+const int VRCUSTOMQUICKSLOTS_VERSION = 4;
 
 extern "C" {
 
@@ -56,7 +59,7 @@ extern "C" {
 		// populate info structure
 		info->infoVersion = PluginInfo::kInfoVersion;
 		info->name = "VRCustomQuickslots";
-		info->version = 3;
+		info->version = VRCUSTOMQUICKSLOTS_VERSION;
 
 		// store plugin handle so we can identify ourselves later
 		g_pluginHandle = skse->GetPluginHandle();
@@ -143,7 +146,6 @@ extern "C" {
 				QSLOG("XML config load complete.");
 
 				//Registers for PoseUpdates
-				//g_papyrusvr->RegisterPoseUpdateListener(OnPoseUpdate);  // deprecated
 				g_papyrusvr->GetVRManager()->RegisterVRButtonListener(OnVRButtonEvent);
 				g_papyrusvr->GetVRManager()->RegisterVRUpdateListener(OnVRUpdateEvent);
 			}
@@ -153,12 +155,65 @@ extern "C" {
 	//Listener for SKSE Messages
 	void OnSKSEMessage(SKSEMessagingInterface::Message* msg)
 	{
+		// path to XML config file for unique character ID - will be set on PreLoadGame message
+		static char sConfigUniqueIdPath[MAX_PATH] = { 0 };
+
 		if (msg)
 		{
 			if (msg->type == SKSEMessagingInterface::kMessage_PostLoad)
 			{
 				_MESSAGE("SKSE PostLoad message received, registering for PapyrusVR messages from SkyrimVRTools");  // This log msg may happen before XML is loaded
 				g_messaging->RegisterListener(g_pluginHandle, "SkyrimVRTools", OnPapyrusVRMessage);
+			}
+			else if (msg->type == SKSEMessagingInterface::kMessage_PreLoadGame)
+			{
+				char saveGameDataFile[MAX_PATH] = { 0 };
+				const int NUM_SAVE_TOKENS = 20;
+				char* saveNameTokens[NUM_SAVE_TOKENS] = { 0 };
+				char* strtok_context;
+				int currTokenIdx = 0;
+
+				strncpy_s(saveGameDataFile, (char*)msg->data, std::min<size_t>(MAX_PATH - 1, msg->dataLen));
+				
+				// split up the string to extract the unique hash from the savefile name that identifies a save game for a specific character
+				char* currTok = strtok_s(saveGameDataFile, "_", &strtok_context);
+				saveNameTokens[currTokenIdx++] = currTok;
+				while (currTok != nullptr)
+				{
+					currTok = strtok_s(nullptr, "_", &strtok_context);
+					if (currTok && currTokenIdx < NUM_SAVE_TOKENS)
+					{
+						saveNameTokens[currTokenIdx++] = currTok;
+					}
+				}
+				
+				// index 1 will always be the uniqueId based on the format of save game names
+				const char* playerUID = saveNameTokens[1];
+				_MESSAGE("SKSE PreLoadGame message received, save file name: %s UniqueID: %s", (char*)msg->data, playerUID ? playerUID : "NULL");
+
+				
+				if (playerUID)
+				{
+					sprintf_s(sConfigUniqueIdPath, kConfigFileUniqueId, playerUID);
+					
+					// check if unique ID config file exists
+					FILE* fp = nullptr;
+					fopen_s(&fp, sConfigUniqueIdPath, "r");
+					if (fp)
+					{
+						fclose(fp); // if so, close handle and try to load XML
+						g_quickslotMgr->ReadConfig(sConfigUniqueIdPath);
+						QSLOG("XML config for unique playerID load complete.");
+					}
+					else
+					{
+						QSLOG("Unable to find player specific config file: %s", sConfigUniqueIdPath);
+					}
+				}
+
+
+
+
 			}
 			else if (msg->type == SKSEMessagingInterface::kMessage_PostLoadGame || msg->type == SKSEMessagingInterface::kMessage_NewGame)
 			{
@@ -171,7 +226,14 @@ extern "C" {
 
 				if (g_quickslotMgr->AllowEdit())
 				{
-					g_quickslotMgr->WriteConfig(kConfigFile);
+					if (strlen(sConfigUniqueIdPath) > 0) // if we have a unique character config path, write to that instead
+					{
+						g_quickslotMgr->WriteConfig(sConfigUniqueIdPath);
+					}
+					else
+					{
+						g_quickslotMgr->WriteConfig(kConfigFile);
+					}
 				}
 			}
 		}

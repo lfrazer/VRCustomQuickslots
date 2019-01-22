@@ -293,6 +293,26 @@ CQuickslot*	 CQuickslotManager::FindQuickslot(const PapyrusVR::Vector3& pos, flo
 }
 
 
+int		CQuickslotManager::GetEffectiveSlot(int inSlot)
+{
+	if (mLeftHandedMode && inSlot <= CQuickslot::SLOT_LEFTHAND)
+	{
+		const int outSlot[3] = { CQuickslot::SLOT_DEFAULT, CQuickslot::SLOT_LEFTHAND, CQuickslot::SLOT_RIGHTHAND };
+		return outSlot[inSlot];
+	}
+
+	return inSlot;
+}
+
+
+void	CQuickslotManager::Reset()
+{
+	mQuickslotArray.clear();
+
+	mInGame = false;
+}
+
+
 
 EventResult CQuickslotManager::AllMenuEventHandler::ReceiveEvent(MenuOpenCloseEvent * evn, EventDispatcher<MenuOpenCloseEvent> * dispatcher)
 {
@@ -349,7 +369,7 @@ void CQuickslot::DoAction(const CQuickslotCmd& cmd)
 	if (cmd.mAction == EQUIP_ITEM)
 	{
 		TESForm* itemFormObj = LookupFormByID(cmd.mFormID);
-		papyrusActor::EquipItemEx( (Actor*)(*g_thePlayer), itemFormObj, cmd.mSlot, false, true);
+		papyrusActor::EquipItemEx( (Actor*)(*g_thePlayer), itemFormObj, CQuickslotManager::GetSingleton().GetEffectiveSlot(cmd.mSlot), false, true);
 	}
 	else if (cmd.mAction == EQUIP_SPELL)
 	{
@@ -367,7 +387,7 @@ void CQuickslot::DoAction(const CQuickslotCmd& cmd)
 		}
 		else if(cmd.mSlot <= SLOT_LEFTHAND)
 		{
-			sprintf_s(cmdBuffer, cmdBufferSize, "player.equipspell %x %s", cmd.mFormID, slotNames[cmd.mSlot]);
+			sprintf_s(cmdBuffer, cmdBufferSize, "player.equipspell %x %s", cmd.mFormID, slotNames[CQuickslotManager::GetSingleton().GetEffectiveSlot(cmd.mSlot)]);
 			CSkyrimConsole::RunCommand(cmdBuffer);
 		}
 		else
@@ -388,15 +408,17 @@ void CQuickslot::DoAction(const CQuickslotCmd& cmd)
 	}
 }
 
+// Set a new action on quickslot
 void CQuickslot::SetAction(PapyrusVR::VRDevice deviceId)
 {
 	const vr::ETrackedControllerRole deviceToControllerRoleLookup[3] = { vr::ETrackedControllerRole::TrackedControllerRole_Invalid, vr::ETrackedControllerRole::TrackedControllerRole_RightHand, vr::ETrackedControllerRole::TrackedControllerRole_LeftHand };
 	// convert VRDevice id to skyrim Slot ID (left/right hand)
 	const int deviceToSlotLookup[3] = { 0, SLOT_RIGHTHAND, SLOT_LEFTHAND };
 	const int slot = deviceToSlotLookup[deviceId];
+	const int effectiveSlot = CQuickslotManager::GetSingleton().GetEffectiveSlot(slot);
 
 	// set action for only the current hand
-	TESForm* formObj = (*g_thePlayer)->GetEquippedObject(slot == SLOT_LEFTHAND);
+	TESForm* formObj = (*g_thePlayer)->GetEquippedObject(effectiveSlot == SLOT_LEFTHAND);
 
 	if (formObj)
 	{
@@ -412,7 +434,7 @@ void CQuickslot::SetAction(PapyrusVR::VRDevice deviceId)
 		mCommand.mSlot = slot;
 		mCommand.mFormID = formObj->formID;
 
-		QSLOG("Set new action formid=%x on quickslot %s !", formObj->formID, this->mName.c_str());
+		QSLOG("Set new action formid=%x on quickslot %s, slotID=%d effectiveSlot=%d", formObj->formID, this->mName.c_str(), slot, effectiveSlot);
 	}
 }
 

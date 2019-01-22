@@ -37,6 +37,8 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 		return false;
 	}
 
+	Reset();  // reset current quickslot data
+
 	int quickslotCount = 0;
 	tinyxml2::XMLElement* root = xmldoc.RootElement();
 
@@ -49,6 +51,7 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 			elem->QueryIntAttribute("debugloglevel", &mDebugLogVerb);
 			elem->QueryIntAttribute("hapticfeedback", &mHapticOnOverlap);
 			elem->QueryIntAttribute("alloweditslots", &mAllowEditSlots);
+			elem->QueryIntAttribute("lefthandedmode", &mLeftHandedMode);
 			elem->QueryDoubleAttribute("longpresstime", &mLongPressTime);
 
 			mControllerRadius = mDefaultRadius;
@@ -148,6 +151,7 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 	options->SetAttribute("hapticfeedback", mHapticOnOverlap);
 	options->SetAttribute("alloweditslots", mAllowEditSlots);
 	options->SetAttribute("longpresstime", mLongPressTime);
+	options->SetAttribute("lefthandedmode", mLeftHandedMode);
 	options->SetAttribute("controllerradius", mControllerRadius);
 
 	root->InsertFirstChild(options);
