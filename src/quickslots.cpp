@@ -142,6 +142,16 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 
 					quickslot->mLastOverlapTime = CUtil::GetSingleton().GetLastTime();
 
+					// trigger constant haptics on long press to indicate long press to the user
+					const double currButtonHeldTime = CUtil::GetSingleton().GetLastTime() - quickslot->mButtonHoldTime;
+					if (quickslot->mButtonHoldTime > 0.0 &&  currButtonHeldTime > mShortPressTime)
+					{
+						if (std::fmod(currButtonHeldTime, 0.5) < 0.05)
+						{
+							StartHaptics(controllerRoles[i], 0.075);
+						}
+					}
+
 				}
 			}
 
@@ -183,15 +193,8 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 	PapyrusVR::Vector3 controllerPos = GetPositionFromVRPose(currControllerPose);
 	CQuickslot* quickslot = FindQuickslot(controllerPos, mControllerRadius);
 
-	if (quickslot)  // if there is one, execute quickslot equip changes
+	if (quickslot)  // if there is one, track button hold time on quickslot ( DoActions moved to OnRelease event -> ButtonRelease() )
 	{
-		if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION)
-		{
-			// one action for each hand (right and left)
-			quickslot->DoAction(quickslot->mCommand);
-			quickslot->DoAction(quickslot->mCommandAlt);
-		}
-
 		// increase press time on this quickslot
 		quickslot->mButtonHoldTime = CUtil::GetSingleton().GetLastTime();
 		
@@ -247,18 +250,29 @@ void	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 				// trigger haptic response
 				const vr::ETrackedControllerRole deviceToControllerRoleLookup[3] = { vr::ETrackedControllerRole::TrackedControllerRole_Invalid, vr::ETrackedControllerRole::TrackedControllerRole_RightHand, vr::ETrackedControllerRole::TrackedControllerRole_LeftHand };
 
-				StartHaptics(deviceToControllerRoleLookup[deviceId], 0.5);
+
 
 				// Empty slot if it is bound to an action, otherwise modify it
 				if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION)
 				{
+					StartHaptics(deviceToControllerRoleLookup[deviceId], 0.5); // haptics on un-equip slot
 					quickslot->UnsetAction();
 				}
 				else // modify the quickslot with current item/spell if none is set
 				{
+					StartHaptics(deviceToControllerRoleLookup[deviceId], 1.0); // longer haptics on equip
 					quickslot->SetAction(deviceId);
 				}
 
+			}
+		}
+		else
+		{
+			if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION) // do actions on release IF this was not a long press
+			{
+				// one action for each hand (right and left)
+				quickslot->DoAction(quickslot->mCommand);
+				quickslot->DoAction(quickslot->mCommandAlt);
 			}
 		}
 

@@ -166,6 +166,7 @@ private:
 	bool							mInGame = false; // do not start processing until in-game (after load game or new game event from SKSE)
 	double							mMenuLastCloseTime = -1.0; // track the last time the menu was closed (negative means invalid time / do not track time)
 	double							mLongPressTime = 3.0;  // length of time to trigger long press action
+	double							mShortPressTime = 0.3; // lenght of time to trigger short press action (basically to check if more than a single click)
 	double							mControllerHapticTime[2] = { 0.0 };
 
 
