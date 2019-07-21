@@ -45,7 +45,7 @@ CUtil*			g_Util = nullptr;
 
 const char* kConfigFile = "Data\\SKSE\\Plugins\\vrcustomquickslots.xml";
 const char* kConfigFileUniqueId = "Data\\SKSE\\Plugins\\vrcustomquickslots_%s.xml";
-const int VRCUSTOMQUICKSLOTS_VERSION = 4;
+const int VRCUSTOMQUICKSLOTS_VERSION = 5;
 
 extern "C" {
 

@@ -15,12 +15,12 @@ Default quickslot layout was made for someone who is around 6 feet (182cm) tall
 	<options debugloglevel="0" defaultradius="0.12" />
 
 	<!-- back right slot -->
-	<quickslot name="backright" posx="0.2" posy="-0.2" posz="0.175">
+	<quickslot name="backright" posx="0.2" posy="-0.2" posz="0.3">
 		<equipitem formid="000139AD"></equipitem> 	<!--  equip ebony bow -->
 	</quickslot>
 	
 	<!-- back left slot -->
-	<quickslot name="backleft" posx="-0.2" posy="-0.2" posz="0.175">
+	<quickslot name="backleft" posx="-0.2" posy="-0.2" posz="0.3">
 		<equipitem formid="000139b1"></equipitem> 	<!-- equip ebony sword -->
 	</quickslot>
 	
