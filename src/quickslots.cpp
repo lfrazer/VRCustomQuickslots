@@ -125,7 +125,8 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 			const double kHapticTimeout = 1.0;
 			const int numControllers = 2;
 			PapyrusVR::TrackedDevicePose* controllers[numControllers] = {mLeftControllerPose, mRightControllerPose};
-			vr::ETrackedControllerRole controllerRoles[numControllers] = { vr::ETrackedControllerRole::TrackedControllerRole_LeftHand, vr::ETrackedControllerRole::TrackedControllerRole_RightHand };
+			const vr::ETrackedControllerRole controllerRoles[numControllers] = { vr::ETrackedControllerRole::TrackedControllerRole_LeftHand, vr::ETrackedControllerRole::TrackedControllerRole_RightHand };
+			const PapyrusVR::VRDevice controllerDeviceIds[numControllers] = { PapyrusVR::VRDevice::VRDevice_LeftController, PapyrusVR::VRDevice::VRDevice_RightController };
 
 			for (int i = 0; i < numControllers; ++i)
 			{
@@ -149,6 +150,31 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 						if (std::fmod(currButtonHeldTime, 0.5) < 0.05)
 						{
 							StartHaptics(controllerRoles[i], 0.075);
+						}
+					}
+
+					if (quickslot->mButtonHoldTime > 0.0 && currButtonHeldTime > mLongPressTime)
+					{
+						QSLOG_INFO("Hold button action on quickslot %s !", quickslot->mName.c_str());
+
+						// on long press, unset the quickslot action so the user can modify it later
+						if (mAllowEditSlots)
+						{
+							// trigger haptic response
+
+							// Empty slot if it is bound to an action, otherwise modify it
+							if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION)
+							{
+								StartHaptics(controllerRoles[i], 0.5); // haptics on un-equip slot
+								quickslot->UnsetAction();
+							}
+							else // modify the quickslot with current item/spell if none is set
+							{
+								StartHaptics(controllerRoles[i], 1.0); // longer haptics on equip
+								quickslot->SetAction(controllerDeviceIds[i]);
+							}
+
+							quickslot->mButtonHoldTime = -1.0;
 						}
 					}
 
@@ -239,43 +265,12 @@ void	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 
 	if (quickslot)
 	{
-
-		if (quickslot->mButtonHoldTime > 0.0 && CUtil::GetSingleton().GetLastTime() - quickslot->mButtonHoldTime > mLongPressTime)
+		if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION) // do actions on release IF this was not a long press
 		{
-			QSLOG_INFO("Hold button action on quickslot %s !", quickslot->mName.c_str());
-
-			// on long press, unset the quickslot action so the user can modify it later
-			if (mAllowEditSlots)
-			{
-				// trigger haptic response
-				const vr::ETrackedControllerRole deviceToControllerRoleLookup[3] = { vr::ETrackedControllerRole::TrackedControllerRole_Invalid, vr::ETrackedControllerRole::TrackedControllerRole_RightHand, vr::ETrackedControllerRole::TrackedControllerRole_LeftHand };
-
-
-
-				// Empty slot if it is bound to an action, otherwise modify it
-				if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION)
-				{
-					StartHaptics(deviceToControllerRoleLookup[deviceId], 0.5); // haptics on un-equip slot
-					quickslot->UnsetAction();
-				}
-				else // modify the quickslot with current item/spell if none is set
-				{
-					StartHaptics(deviceToControllerRoleLookup[deviceId], 1.0); // longer haptics on equip
-					quickslot->SetAction(deviceId);
-				}
-
-			}
+			// one action for each hand (right and left)
+			quickslot->DoAction(quickslot->mCommand);
+			quickslot->DoAction(quickslot->mCommandAlt);
 		}
-		else
-		{
-			if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION) // do actions on release IF this was not a long press
-			{
-				// one action for each hand (right and left)
-				quickslot->DoAction(quickslot->mCommand);
-				quickslot->DoAction(quickslot->mCommandAlt);
-			}
-		}
-
 	}
 
 	// reset button hold time for all other quickslots
