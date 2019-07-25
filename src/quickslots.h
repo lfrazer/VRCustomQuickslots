@@ -23,6 +23,7 @@
 #include "api/PapyrusVRTypes.h"
 #include "api/OpenVRTypes.h"
 #include "api/openvr.h"
+#include "api/VRHookAPI.h"
 #include <string>
 #include <vector>
 
@@ -124,8 +125,9 @@ public:
 	bool			WriteConfig(const char* filename);
 	CQuickslot*		FindQuickslot(const PapyrusVR::Vector3& pos, float radius);
 	void			Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose);
-	void			ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
-	void			ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
+	// button press/release now return true depending if the button press was triggered on a quickslot (this is for new feature: consuming inputs when used on quickslots)
+	bool			ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
+	bool			ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
 	void			Reset(); // Reset quickslot manager data
 
 	// check when menu is open, plus for a short delay after it has been closed
@@ -137,6 +139,12 @@ public:
 	int				GetEffectiveSlot(int inSlot); // Get effective slot to equip with, this mainly can change due to left handed mode and Skyrim VR's awkward left handed mode implementation
 	void			SetInGame(bool flag) { mInGame = flag; }
 	int				AllowEdit() const { return mAllowEditSlots; }
+	
+	void			SetHookMgr(OpenVRHookManagerAPI* hookMgr) 
+	{ 
+		mHookMgrAPI = hookMgr; 
+		mVRSystem = hookMgr->GetVRSystem();
+	}
 
 private:
 
@@ -148,6 +156,9 @@ private:
 	vr::IVRSystem*					mVRSystem = nullptr;
 
 	AllMenuEventHandler				mMenuEventHandler;
+
+	// VR hook manager for new RAW api
+	OpenVRHookManagerAPI*			mHookMgrAPI = nullptr;
 
 	float							mControllerRadius = 0.1f;  // default sphere radius for controller overlap
 	PapyrusVR::EVRButtonId			mActivateButton = PapyrusVR::k_EButton_SteamVR_Trigger;

@@ -190,13 +190,13 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 	}
 }
 
-void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
+bool	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
 {
 
 	// check if relevant button was pressed, or if a menu was open and early exit
 	if (buttonId != mActivateButton || IsMenuOpen() || !mInGame)
 	{
-		return;
+		return false;
 	}
 
 	// find quickslot based on current hand 
@@ -212,7 +212,7 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 	}
 	else
 	{
-		return;
+		return false;
 	}
 
 	// find the relevant quickslot which is overlapped by the controllers current position
@@ -232,15 +232,17 @@ void	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 	{
 		QSLOG_INFO("NO quickslot found pos (%f,%f,%f)", controllerPos.x, controllerPos.y, controllerPos.z);
 	}
+
+	return quickslot != nullptr;
 }
 
 
-void	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
+bool	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
 {
 	// check if relevant button was pressed, or if a menu was open and early exit
 	if (buttonId != mActivateButton || IsMenuOpen() || !mInGame)
 	{
-		return;
+		return false;
 	}
 
 	// find quickslot based on current hand 
@@ -256,7 +258,7 @@ void	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 	}
 	else
 	{
-		return;
+		return false;
 	}
 
 	// find the relevant quickslot which is overlapped by the controllers current position
@@ -280,6 +282,7 @@ void	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 		
 	}
 
+	return quickslot != nullptr;
 }
 
 CQuickslot*	 CQuickslotManager::FindQuickslot(const PapyrusVR::Vector3& pos, float radius)

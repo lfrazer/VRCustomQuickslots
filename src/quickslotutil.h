@@ -21,8 +21,11 @@
 
 #pragma once
 
+//Headers under api/ folder
 #include "api/PapyrusVRTypes.h"
 #include "api/OpenVRTypes.h"
+#include "api/PapyrusVRAPI.h"
+#include "api/VRManagerAPI.h"
 #include "common/ISingleton.h"
 #include "timer.h"
 

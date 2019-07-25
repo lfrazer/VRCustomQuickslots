@@ -26,11 +26,6 @@
 #include <shlobj.h>				// for use of CSIDL_MYCODUMENTS
 #include <algorithm>
 
-//Headers under api/ folder
-#include "api/PapyrusVRAPI.h"
-#include "api/VRManagerAPI.h"
-
-
 #include "quickslots.h"
 #include "quickslotutil.h"
 
@@ -42,6 +37,7 @@ static SKSEMessagingInterface		* g_messaging = NULL;
 PapyrusVRAPI*	g_papyrusvr = nullptr;
 CQuickslotManager* g_quickslotMgr = nullptr;
 CUtil*			g_Util = nullptr;
+vr::IVRSystem*	g_VRSystem = nullptr; // only set by new RAW api from Hook Mgr
 
 const char* kConfigFile = "Data\\SKSE\\Plugins\\vrcustomquickslots.xml";
 const char* kConfigFileUniqueId = "Data\\SKSE\\Plugins\\vrcustomquickslots_%s.xml";
@@ -105,6 +101,7 @@ extern "C" {
 		return true;
 	}
 
+	// Legacy API event handlers
 	void OnVRButtonEvent(PapyrusVR::VREventType type, PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
 	{
 		// Use button presses here
@@ -122,12 +119,78 @@ extern "C" {
 
 	void OnVRUpdateEvent(float deltaTime)
 	{
+		// Get render poses by default
 		PapyrusVR::TrackedDevicePose* leftHandPose = g_papyrusvr->GetVRManager()->GetLeftHandPose();
 		PapyrusVR::TrackedDevicePose* rightHandPose = g_papyrusvr->GetVRManager()->GetRightHandPose();
 		PapyrusVR::TrackedDevicePose* hmdPose = g_papyrusvr->GetVRManager()->GetHMDPose();
 
 		g_quickslotMgr->Update(hmdPose, leftHandPose, rightHandPose);
 
+	}
+
+	// New RAW API event handlers
+	bool OnControllerStateChanged(vr::TrackedDeviceIndex_t unControllerDeviceIndex, const vr::VRControllerState_t* pControllerState, uint32_t unControllerStateSize, vr::VRControllerState_t* pOutputControllerState)
+	{
+		static int lastPacketId = 0;
+		static uint64_t lastButtonPressedData = 0;
+		if (pControllerState->unPacketNum != lastPacketId) // only process if the packetNum was updated
+		{
+			vr::TrackedDeviceIndex_t leftcontroller = g_VRSystem->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole::TrackedControllerRole_LeftHand);
+			vr::TrackedDeviceIndex_t rightcontroller = g_VRSystem->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole::TrackedControllerRole_RightHand);
+
+			//PapyrusVR::EVRButtonId buttonId = PapyrusVR::k_EButton_SteamVR_Trigger;
+			PapyrusVR::VRDevice deviceId = unControllerDeviceIndex == leftcontroller ? PapyrusVR::VRDevice_LeftController : PapyrusVR::VRDevice_RightController;
+
+			// right now only check for trigger press.  In future support input binding?
+			if (pControllerState->ulButtonPressed & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger) && !(lastButtonPressedData & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)))
+			{
+				bool retVal = g_quickslotMgr->ButtonPress(PapyrusVR::k_EButton_SteamVR_Trigger, deviceId);
+
+				if (retVal) // mask out input if we touched a quickslot (block the game from receiving it)
+				{
+					pOutputControllerState->ulButtonPressed &= ~ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger);
+				}
+			}
+			else if (!(pControllerState->ulButtonPressed & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)) && (lastButtonPressedData & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)))
+			{
+				g_quickslotMgr->ButtonRelease(PapyrusVR::k_EButton_SteamVR_Trigger, deviceId);
+			}
+
+			lastPacketId = pControllerState->unPacketNum;
+			lastButtonPressedData = pControllerState->ulButtonPressed;
+		}
+		return true;
+	}
+
+
+	vr::EVRCompositorError OnGetPosesUpdate(VR_ARRAY_COUNT(unRenderPoseArrayCount) vr::TrackedDevicePose_t* pRenderPoseArray, uint32_t unRenderPoseArrayCount,
+			VR_ARRAY_COUNT(unGamePoseArrayCount) vr::TrackedDevicePose_t* pGamePoseArray, uint32_t unGamePoseArrayCount)
+	{
+		
+		// NOTE: PapyrusVR tracked pose structure must match structure from OpenVR.h exactly.  Be wary of OpenVR updates!  original code from artumino engineered like this ¯\_(@)_/¯
+		PapyrusVR::TrackedDevicePose* hmdPose = nullptr;
+		PapyrusVR::TrackedDevicePose* leftCtrlPose = nullptr;
+		PapyrusVR::TrackedDevicePose* rightCtrlPose = nullptr;
+
+		for (uint32_t i = 0; i < unRenderPoseArrayCount; ++i)
+		{
+			if (i == PapyrusVR::k_unTrackedDeviceIndex_Hmd)
+			{
+				hmdPose = (PapyrusVR::TrackedDevicePose*)&pRenderPoseArray[i];
+			}
+			else if (i == g_VRSystem->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole::TrackedControllerRole_LeftHand))
+			{
+				leftCtrlPose = (PapyrusVR::TrackedDevicePose*)&pRenderPoseArray[i];
+			}
+			else if (i == g_VRSystem->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole::TrackedControllerRole_RightHand))
+			{
+				rightCtrlPose = (PapyrusVR::TrackedDevicePose*)&pRenderPoseArray[i];
+			}
+		}
+
+		g_quickslotMgr->Update(hmdPose, leftCtrlPose, rightCtrlPose);
+
+		return vr::VRCompositorError_None;
 	}
 
 	//Listener for PapyrusVR Messages
@@ -145,9 +208,24 @@ extern "C" {
 
 				QSLOG("XML config load complete.");
 
-				//Registers for PoseUpdates
-				g_papyrusvr->GetVRManager()->RegisterVRButtonListener(OnVRButtonEvent);
-				g_papyrusvr->GetVRManager()->RegisterVRUpdateListener(OnVRUpdateEvent);
+				OpenVRHookManagerAPI* hookMgrAPI = RequestOpenVRHookManagerObject();
+				if (hookMgrAPI)
+				{
+					QSLOG("Using new RAW OpenVR Hook API.");
+
+					g_quickslotMgr->SetHookMgr(hookMgrAPI);
+					hookMgrAPI->RegisterControllerStateCB(OnControllerStateChanged);
+					hookMgrAPI->RegisterGetPosesCB(OnGetPosesUpdate);
+					g_VRSystem = hookMgrAPI->GetVRSystem();
+				}
+				else
+				{
+					QSLOG("Using legacy PapyrusVR API.");
+
+					//Registers for PoseUpdates
+					g_papyrusvr->GetVRManager()->RegisterVRButtonListener(OnVRButtonEvent);
+					g_papyrusvr->GetVRManager()->RegisterVRUpdateListener(OnVRUpdateEvent);
+				}
 			}
 		}
 	}
