@@ -157,7 +157,7 @@ extern "C" {
 			}
 
 			lastPacketId = pControllerState->unPacketNum;
-			lastButtonPressedData = pControllerState->ulButtonPressed;
+			lastButtonPressedData = pOutputControllerState->ulButtonPressed;
 		}
 		return true;
 	}
@@ -166,25 +166,30 @@ extern "C" {
 	vr::EVRCompositorError OnGetPosesUpdate(VR_ARRAY_COUNT(unRenderPoseArrayCount) vr::TrackedDevicePose_t* pRenderPoseArray, uint32_t unRenderPoseArrayCount,
 			VR_ARRAY_COUNT(unGamePoseArrayCount) vr::TrackedDevicePose_t* pGamePoseArray, uint32_t unGamePoseArrayCount)
 	{
-		
+		// actually, we do need to copy the pose memory data here because ButtonPress/Release will refer to it by pointer later.
+		static PapyrusVR::TrackedDevicePose sPoseData[vr::k_unMaxTrackedDeviceCount];
+
 		// NOTE: PapyrusVR tracked pose structure must match structure from OpenVR.h exactly.  Be wary of OpenVR updates!  original code from artumino engineered like this ¯\_(@)_/¯
 		PapyrusVR::TrackedDevicePose* hmdPose = nullptr;
 		PapyrusVR::TrackedDevicePose* leftCtrlPose = nullptr;
 		PapyrusVR::TrackedDevicePose* rightCtrlPose = nullptr;
 
+		memcpy_s(sPoseData, sizeof(PapyrusVR::TrackedDevicePose) * vr::k_unMaxTrackedDeviceCount, pRenderPoseArray, sizeof(PapyrusVR::TrackedDevicePose) * unRenderPoseArrayCount);
+		
+
 		for (uint32_t i = 0; i < unRenderPoseArrayCount; ++i)
 		{
 			if (i == PapyrusVR::k_unTrackedDeviceIndex_Hmd)
 			{
-				hmdPose = (PapyrusVR::TrackedDevicePose*)&pRenderPoseArray[i];
+				hmdPose = (PapyrusVR::TrackedDevicePose*)&sPoseData[i];
 			}
 			else if (i == g_VRSystem->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole::TrackedControllerRole_LeftHand))
 			{
-				leftCtrlPose = (PapyrusVR::TrackedDevicePose*)&pRenderPoseArray[i];
+				leftCtrlPose = (PapyrusVR::TrackedDevicePose*)&sPoseData[i];
 			}
 			else if (i == g_VRSystem->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole::TrackedControllerRole_RightHand))
 			{
-				rightCtrlPose = (PapyrusVR::TrackedDevicePose*)&pRenderPoseArray[i];
+				rightCtrlPose = (PapyrusVR::TrackedDevicePose*)&sPoseData[i];
 			}
 		}
 
@@ -200,32 +205,9 @@ extern "C" {
 		{
 			if (msg->type == kPapyrusVR_Message_Init && msg->data)
 			{
-				_MESSAGE("PapyrusVR Init Message recived with valid data, registering for pose update callback");
+				_MESSAGE("PapyrusVR Init Message received with valid data, waiting for init.");
 				g_papyrusvr = (PapyrusVRAPI*)msg->data;
 
-				_MESSAGE("Reading XML quickslots config vrcustomquickslots.xml");
-				g_quickslotMgr->ReadConfig(kConfigFile);
-
-				QSLOG("XML config load complete.");
-
-				OpenVRHookManagerAPI* hookMgrAPI = RequestOpenVRHookManagerObject();
-				if (hookMgrAPI)
-				{
-					QSLOG("Using new RAW OpenVR Hook API.");
-
-					g_quickslotMgr->SetHookMgr(hookMgrAPI);
-					hookMgrAPI->RegisterControllerStateCB(OnControllerStateChanged);
-					hookMgrAPI->RegisterGetPosesCB(OnGetPosesUpdate);
-					g_VRSystem = hookMgrAPI->GetVRSystem();
-				}
-				else
-				{
-					QSLOG("Using legacy PapyrusVR API.");
-
-					//Registers for PoseUpdates
-					g_papyrusvr->GetVRManager()->RegisterVRButtonListener(OnVRButtonEvent);
-					g_papyrusvr->GetVRManager()->RegisterVRUpdateListener(OnVRUpdateEvent);
-				}
 			}
 		}
 	}
@@ -242,6 +224,42 @@ extern "C" {
 			{
 				_MESSAGE("SKSE PostLoad message received, registering for PapyrusVR messages from SkyrimVRTools");  // This log msg may happen before XML is loaded
 				g_messaging->RegisterListener(g_pluginHandle, "SkyrimVRTools", OnPapyrusVRMessage);
+			}
+			else if (msg->type == SKSEMessagingInterface::kMessage_DataLoaded)
+			{
+				if (g_papyrusvr)
+				{
+					_MESSAGE("Initializing VRCustomQuickslots data.");
+					_MESSAGE("Reading XML quickslots config vrcustomquickslots.xml");
+					g_quickslotMgr->ReadConfig(kConfigFile);
+
+					QSLOG("XML config load complete.");
+					QSLOG("VRCustomQuickslots Plugin version: %d", VRCUSTOMQUICKSLOTS_VERSION);
+
+					OpenVRHookManagerAPI* hookMgrAPI = RequestOpenVRHookManagerObject();
+					if (hookMgrAPI && !g_quickslotMgr->DisableRawAPI())
+					{
+						QSLOG("Using new RAW OpenVR Hook API.");
+
+						g_quickslotMgr->SetHookMgr(hookMgrAPI);
+						g_VRSystem = hookMgrAPI->GetVRSystem(); // setup VR system before callbacks
+						hookMgrAPI->RegisterControllerStateCB(OnControllerStateChanged);
+						hookMgrAPI->RegisterGetPosesCB(OnGetPosesUpdate);
+
+					}
+					else
+					{
+						QSLOG("Using legacy PapyrusVR API.");
+
+						//Registers for PoseUpdates
+						g_papyrusvr->GetVRManager()->RegisterVRButtonListener(OnVRButtonEvent);
+						g_papyrusvr->GetVRManager()->RegisterVRUpdateListener(OnVRUpdateEvent);
+					}
+				}
+				else
+				{
+					_MESSAGE("PapyrusVR was not initialized!");
+				}
 			}
 			else if (msg->type == SKSEMessagingInterface::kMessage_PreLoadGame)
 			{

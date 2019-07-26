@@ -52,6 +52,7 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 			elem->QueryIntAttribute("hapticfeedback", &mHapticOnOverlap);
 			elem->QueryIntAttribute("alloweditslots", &mAllowEditSlots);
 			elem->QueryIntAttribute("lefthandedmode", &mLeftHandedMode);
+			elem->QueryIntAttribute("disablerawapi", &mDisableRawAPI);
 			elem->QueryDoubleAttribute("longpresstime", &mLongPressTime);
 
 			mControllerRadius = mDefaultRadius;
@@ -152,6 +153,7 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 	options->SetAttribute("alloweditslots", mAllowEditSlots);
 	options->SetAttribute("longpresstime", mLongPressTime);
 	options->SetAttribute("lefthandedmode", mLeftHandedMode);
+	options->SetAttribute("disablerawapi", mDisableRawAPI);
 	options->SetAttribute("controllerradius", mControllerRadius);
 
 	root->InsertFirstChild(options);

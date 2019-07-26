@@ -139,7 +139,8 @@ public:
 	int				GetEffectiveSlot(int inSlot); // Get effective slot to equip with, this mainly can change due to left handed mode and Skyrim VR's awkward left handed mode implementation
 	void			SetInGame(bool flag) { mInGame = flag; }
 	int				AllowEdit() const { return mAllowEditSlots; }
-	
+	int				DisableRawAPI() const { return mDisableRawAPI; }
+
 	void			SetHookMgr(OpenVRHookManagerAPI* hookMgr) 
 	{ 
 		mHookMgrAPI = hookMgr; 
@@ -172,6 +173,7 @@ private:
 	int								mHapticOnOverlap = 1;  // haptic feedback on quickslot overlap
 	int								mAllowEditSlots = 1;   // editing quickslots in game allowed?
 	int								mLeftHandedMode = 0;  // left handed mode? 
+	int								mDisableRawAPI = 0; // if true, do not attempt to load new Raw OpenVR API
 	float							mDefaultRadius = 0.1f;
 	bool							mIsMenuOpen = false; // use events to block quickslots when menu is open, set this flag to true when menu is open
 	bool							mInGame = false; // do not start processing until in-game (after load game or new game event from SKSE)
