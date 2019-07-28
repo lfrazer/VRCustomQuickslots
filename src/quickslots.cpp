@@ -193,15 +193,8 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 	}
 }
 
-bool	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
+CQuickslot*	CQuickslotManager::FindQuickslotByDeviceId(PapyrusVR::VRDevice deviceId)
 {
-
-	// check if relevant button was pressed, or if a menu was open and early exit
-	if (buttonId != mActivateButton || IsMenuOpen() || !mInGame)
-	{
-		return false;
-	}
-
 	// find quickslot based on current hand 
 	PapyrusVR::TrackedDevicePose* currControllerPose = nullptr;
 
@@ -216,12 +209,25 @@ bool	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 	else
 	{
 		QSLOG_INFO("No valid poses in button press! deviceId: %d", deviceId);
-		return false;
+		return nullptr;
 	}
 
 	// find the relevant quickslot which is overlapped by the controllers current position
 	PapyrusVR::Vector3 controllerPos = GetPositionFromVRPose(currControllerPose);
 	CQuickslot* quickslot = FindQuickslot(controllerPos, mControllerRadius);
+	return quickslot;
+}
+
+bool	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
+{
+
+	// check if relevant button was pressed, or if a menu was open and early exit
+	if (buttonId != mActivateButton || IsMenuOpen() || !mInGame)
+	{
+		return false;
+	}
+
+	CQuickslot* quickslot = FindQuickslotByDeviceId(deviceId);
 
 #if QS_DEBUG_FEATURES
 	CQuickslot* nearestQS = FindNearestQuickslot(controllerPos);
@@ -236,13 +242,14 @@ bool	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 		// increase press time on this quickslot
 		quickslot->mButtonHoldTime = CUtil::GetSingleton().GetLastTime();
 		
-		QSLOG_INFO("Found a quickslot at pos (%f,%f,%f) !", controllerPos.x, controllerPos.y, controllerPos.z);
+		// TODO: fix logging here
+		//QSLOG_INFO("Found a quickslot at pos (%f,%f,%f) !", controllerPos.x, controllerPos.y, controllerPos.z);
 		quickslot->PrintInfo();
 		
 	}
 	else
 	{
-		QSLOG_INFO("NO quickslot found pos (%f,%f,%f)", controllerPos.x, controllerPos.y, controllerPos.z);
+		//QSLOG_INFO("NO quickslot found pos (%f,%f,%f)", controllerPos.x, controllerPos.y, controllerPos.z);
 	}
 
 	return quickslot != nullptr;
@@ -257,25 +264,7 @@ bool	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 		return false;
 	}
 
-	// find quickslot based on current hand 
-	PapyrusVR::TrackedDevicePose* currControllerPose = nullptr;
-
-	if (deviceId == PapyrusVR::VRDevice_LeftController && mLeftControllerPose->bPoseIsValid)
-	{
-		currControllerPose = mLeftControllerPose;
-	}
-	else if (deviceId == PapyrusVR::VRDevice_RightController && mRightControllerPose->bPoseIsValid)
-	{
-		currControllerPose = mRightControllerPose;
-	}
-	else
-	{
-		return false;
-	}
-
-	// find the relevant quickslot which is overlapped by the controllers current position
-	PapyrusVR::Vector3 controllerPos = GetPositionFromVRPose(currControllerPose);
-	CQuickslot* quickslot = FindQuickslot(controllerPos, mControllerRadius);
+	CQuickslot* quickslot = FindQuickslotByDeviceId(deviceId);
 
 	if (quickslot)
 	{

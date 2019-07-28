@@ -152,25 +152,34 @@ extern "C" {
 
 		if (deviceId != PapyrusVR::VRDevice_Unknown)
 		{
+			const auto buttonId = PapyrusVR::k_EButton_SteamVR_Trigger;
+			const uint64_t buttonMask = ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger);  // annoying issue where PapyrusVR and openvr enums are not type-compatible..
+
 			// right now only check for trigger press.  In future support input binding?
-			if (pControllerState->ulButtonPressed & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger) && !(lastButtonPressedData[deviceId] & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)))
+			if (pControllerState->ulButtonPressed & buttonMask && !(lastButtonPressedData[deviceId] & buttonMask))
 			{
-				bool retVal = g_quickslotMgr->ButtonPress(PapyrusVR::k_EButton_SteamVR_Trigger, deviceId);
+				bool retVal = g_quickslotMgr->ButtonPress(buttonId, deviceId);
 
 				if (retVal) // mask out input if we touched a quickslot (block the game from receiving it)
 				{
-					pOutputControllerState->ulButtonPressed &= ~ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger);
+					pOutputControllerState->ulButtonPressed &= ~buttonMask;
 				}
 
 				QSLOG_INFO("Trigger pressed for deviceIndex: %d deviceId: %d", unControllerDeviceIndex, deviceId);
 			}
-			else if (!(pControllerState->ulButtonPressed & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)) && (lastButtonPressedData[deviceId] & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)))
+			else if (!(pControllerState->ulButtonPressed & buttonMask) && (lastButtonPressedData[deviceId] & buttonMask))
 			{
-				g_quickslotMgr->ButtonRelease(PapyrusVR::k_EButton_SteamVR_Trigger, deviceId);
+				g_quickslotMgr->ButtonRelease(buttonId, deviceId);
 
 				QSLOG_INFO("Trigger released for deviceIndex: %d deviceId: %d", unControllerDeviceIndex, deviceId);
 			}
 			
+			// we need to block all inputs when button is held over top of a quickslot (check last button press and if controller is hovering over a quickslot)
+			if (lastButtonPressedData[deviceId] & buttonMask && g_quickslotMgr->FindQuickslotByDeviceId(deviceId))
+			{
+				pOutputControllerState->ulButtonPressed &= ~buttonMask;
+			}
+
 			lastButtonPressedData[deviceId] = pControllerState->ulButtonPressed;
 		}
 		
