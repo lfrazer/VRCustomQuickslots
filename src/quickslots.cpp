@@ -274,6 +274,13 @@ bool	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 			quickslot->DoAction(quickslot->mCommand);
 			quickslot->DoAction(quickslot->mCommandAlt);
 		}
+		else
+		{
+			// short haptic feedback if no action is set for the quickslot
+			vr::ETrackedControllerRole controllerRole = (deviceId == PapyrusVR::VRDevice_LeftController) ? vr::TrackedControllerRole_LeftHand : vr::TrackedControllerRole_RightHand;
+
+			StartHaptics(controllerRole, 0.2);
+		}
 	}
 
 	// reset button hold time for all other quickslots
