@@ -131,18 +131,29 @@ extern "C" {
 	// New RAW API event handlers
 	bool OnControllerStateChanged(vr::TrackedDeviceIndex_t unControllerDeviceIndex, const vr::VRControllerState_t* pControllerState, uint32_t unControllerStateSize, vr::VRControllerState_t* pOutputControllerState)
 	{
-		static int lastPacketId = 0;
-		static uint64_t lastButtonPressedData = 0;
-		if (pControllerState->unPacketNum != lastPacketId) // only process if the packetNum was updated
+		static uint64_t lastButtonPressedData[PapyrusVR::VRDevice_LeftController + 1] = {0}; // should be size 3 array at least for all 3 vr devices
+		static_assert(PapyrusVR::VRDevice_LeftController + 1 >= 3, "lastButtonPressedData array size too small!");
+		
+		vr::TrackedDeviceIndex_t leftcontroller = g_VRSystem->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole::TrackedControllerRole_LeftHand);
+		vr::TrackedDeviceIndex_t rightcontroller = g_VRSystem->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole::TrackedControllerRole_RightHand);
+
+		// NOTE: DO NOT check the packetNum on ControllerState, it seems to cause problems (maybe it should only be checked per controllers?) - at any rate, it seems to change every frame anyway.  
+
+		PapyrusVR::VRDevice deviceId = PapyrusVR::VRDevice_Unknown;
+			
+		if (unControllerDeviceIndex == leftcontroller)
 		{
-			vr::TrackedDeviceIndex_t leftcontroller = g_VRSystem->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole::TrackedControllerRole_LeftHand);
-			vr::TrackedDeviceIndex_t rightcontroller = g_VRSystem->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole::TrackedControllerRole_RightHand);
+			deviceId = PapyrusVR::VRDevice_LeftController;
+		}
+		else if(unControllerDeviceIndex == rightcontroller)
+		{
+			deviceId = PapyrusVR::VRDevice_RightController;
+		}
 
-			//PapyrusVR::EVRButtonId buttonId = PapyrusVR::k_EButton_SteamVR_Trigger;
-			PapyrusVR::VRDevice deviceId = unControllerDeviceIndex == leftcontroller ? PapyrusVR::VRDevice_LeftController : PapyrusVR::VRDevice_RightController;
-
+		if (deviceId != PapyrusVR::VRDevice_Unknown)
+		{
 			// right now only check for trigger press.  In future support input binding?
-			if (pControllerState->ulButtonPressed & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger) && !(lastButtonPressedData & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)))
+			if (pControllerState->ulButtonPressed & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger) && !(lastButtonPressedData[deviceId] & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)))
 			{
 				bool retVal = g_quickslotMgr->ButtonPress(PapyrusVR::k_EButton_SteamVR_Trigger, deviceId);
 
@@ -150,15 +161,19 @@ extern "C" {
 				{
 					pOutputControllerState->ulButtonPressed &= ~ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger);
 				}
+
+				QSLOG_INFO("Trigger pressed for deviceIndex: %d deviceId: %d", unControllerDeviceIndex, deviceId);
 			}
-			else if (!(pControllerState->ulButtonPressed & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)) && (lastButtonPressedData & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)))
+			else if (!(pControllerState->ulButtonPressed & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)) && (lastButtonPressedData[deviceId] & ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)))
 			{
 				g_quickslotMgr->ButtonRelease(PapyrusVR::k_EButton_SteamVR_Trigger, deviceId);
-			}
 
-			lastPacketId = pControllerState->unPacketNum;
-			lastButtonPressedData = pOutputControllerState->ulButtonPressed;
+				QSLOG_INFO("Trigger released for deviceIndex: %d deviceId: %d", unControllerDeviceIndex, deviceId);
+			}
+			
+			lastButtonPressedData[deviceId] = pControllerState->ulButtonPressed;
 		}
+		
 		return true;
 	}
 

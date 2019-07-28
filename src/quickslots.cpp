@@ -31,6 +31,9 @@
 #include "skse64/GameRTTI.h"
 #include "skse64/GameTypes.h"
 
+#define QS_DEBUG_FEATURES   0
+
+
 
 CQuickslotManager::CQuickslotManager()
 {
@@ -212,12 +215,21 @@ bool	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 	}
 	else
 	{
+		QSLOG_INFO("No valid poses in button press! deviceId: %d", deviceId);
 		return false;
 	}
 
 	// find the relevant quickslot which is overlapped by the controllers current position
 	PapyrusVR::Vector3 controllerPos = GetPositionFromVRPose(currControllerPose);
 	CQuickslot* quickslot = FindQuickslot(controllerPos, mControllerRadius);
+
+#if QS_DEBUG_FEATURES
+	CQuickslot* nearestQS = FindNearestQuickslot(controllerPos);
+	if (quickslot && nearestQS != quickslot)
+	{
+		QSLOG_INFO("nearest quickslot and FindQuickslot() were not the same!");
+	}
+#endif
 
 	if (quickslot)  // if there is one, track button hold time on quickslot ( DoActions moved to OnRelease event -> ButtonRelease() )
 	{
@@ -302,6 +314,29 @@ CQuickslot*	 CQuickslotManager::FindQuickslot(const PapyrusVR::Vector3& pos, flo
 	}
 
 	return nullptr;
+}
+
+// debugging helper func
+CQuickslot*  CQuickslotManager::FindNearestQuickslot(const PapyrusVR::Vector3 pos)
+{
+	const size_t numQuickslots = mQuickslotArray.size();
+	float closestDistSqr = FLT_MAX;
+	CQuickslot* closestQuickslot = nullptr;
+
+	for (size_t i = 0; i < numQuickslots; ++i)
+	{
+
+		const float currDistSqr = DistBetweenVecSqr(pos, mQuickslotArray[i].mPosition);
+		if (currDistSqr < closestDistSqr)
+		{
+			closestDistSqr = currDistSqr;
+			closestQuickslot = &mQuickslotArray[i];
+		}
+	}
+
+	QSLOG_INFO("Closest quickslot was %s at distance %f", closestQuickslot->mName.c_str(), sqrtf(closestDistSqr));
+
+	return closestQuickslot;
 }
 
 

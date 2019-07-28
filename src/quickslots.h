@@ -124,6 +124,7 @@ public:
 	bool			ReadConfig(const char* filename);
 	bool			WriteConfig(const char* filename);
 	CQuickslot*		FindQuickslot(const PapyrusVR::Vector3& pos, float radius);
+	CQuickslot*		FindNearestQuickslot(const PapyrusVR::Vector3 pos); // debug helper func
 	void			Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR::TrackedDevicePose* leftCtrlPose, PapyrusVR::TrackedDevicePose* rightCtrlPose);
 	// button press/release now return true depending if the button press was triggered on a quickslot (this is for new feature: consuming inputs when used on quickslots)
 	bool			ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
