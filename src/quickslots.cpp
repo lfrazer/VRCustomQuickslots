@@ -266,9 +266,9 @@ bool	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 
 	CQuickslot* quickslot = FindQuickslotByDeviceId(deviceId);
 
-	if (quickslot)
+	if (quickslot && quickslot->mButtonHoldTime > 0.0)  // only do action if the button was pressed on originally
 	{
-		if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION) // do actions on release IF this was not a long press
+		if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION)
 		{
 			// one action for each hand (right and left)
 			quickslot->DoAction(quickslot->mCommand);
@@ -287,7 +287,6 @@ bool	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 	for (auto it = mQuickslotArray.begin(); it != mQuickslotArray.end(); ++it)
 	{
 		it->mButtonHoldTime = -1.0;
-		
 	}
 
 	return quickslot != nullptr;
