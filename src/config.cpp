@@ -54,6 +54,7 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 			elem->QueryIntAttribute("lefthandedmode", &mLeftHandedMode);
 			elem->QueryIntAttribute("disablerawapi", &mDisableRawAPI);
 			elem->QueryDoubleAttribute("longpresstime", &mLongPressTime);
+			elem->QueryDoubleAttribute("hoverquickslothaptictime", &mHoverQuickslotHapticTime);
 
 			mControllerRadius = mDefaultRadius;
 
@@ -155,6 +156,7 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 	options->SetAttribute("lefthandedmode", mLeftHandedMode);
 	options->SetAttribute("disablerawapi", mDisableRawAPI);
 	options->SetAttribute("controllerradius", mControllerRadius);
+	options->SetAttribute("hoverquickslothaptictime", mHoverQuickslotHapticTime);
 
 	root->InsertFirstChild(options);
 

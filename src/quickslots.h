@@ -185,7 +185,7 @@ private:
 	double							mLongPressTime = 3.0;  // length of time to trigger long press action
 	double							mShortPressTime = 0.3; // lenght of time to trigger short press action (basically to check if more than a single click)
 	double							mControllerHapticTime[2] = { 0.0 };
-
+	double							mHoverQuickslotHapticTime = 0.05; // length of time to send haptics when hovering over a quickslot (disable if <= 0)
 
 	// constants
 	const double					kMenuBlockDelay = 0.25;  // time in seconds to block actions after menu was closed

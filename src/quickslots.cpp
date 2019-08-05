@@ -139,9 +139,9 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 				if (quickslot)
 				{
 					// Do haptic response (but not constantly, check for timeout)
-					if (CUtil::GetSingleton().GetLastTime() - quickslot->mLastOverlapTime > kHapticTimeout)
+					if (mHoverQuickslotHapticTime > 0.0 && CUtil::GetSingleton().GetLastTime() - quickslot->mLastOverlapTime > kHapticTimeout)
 					{						
-						StartHaptics(controllerRoles[i], 0.05);						
+						StartHaptics(controllerRoles[i], mHoverQuickslotHapticTime);						
 					}
 
 					quickslot->mLastOverlapTime = CUtil::GetSingleton().GetLastTime();
