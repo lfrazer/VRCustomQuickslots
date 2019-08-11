@@ -217,7 +217,11 @@ extern "C" {
 			}
 		}
 
-		g_quickslotMgr->Update(hmdPose, leftCtrlPose, rightCtrlPose);
+		// null check to avoid rare crash here
+		if (hmdPose && rightCtrlPose && leftCtrlPose)
+		{
+			g_quickslotMgr->Update(hmdPose, leftCtrlPose, rightCtrlPose);
+		}
 
 		return vr::VRCompositorError_None;
 	}
