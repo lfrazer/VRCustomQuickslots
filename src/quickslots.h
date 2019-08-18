@@ -123,6 +123,7 @@ public:
 	CQuickslotManager();
 	bool			ReadConfig(const char* filename);
 	bool			WriteConfig(const char* filename);
+	bool			IsTrackingDataValid() const;
 	CQuickslot*		FindQuickslot(const PapyrusVR::Vector3& pos, float radius);
 	CQuickslot*		FindNearestQuickslot(const PapyrusVR::Vector3 pos); // debug helper func
 	// find out if a controller is hovering over a quickslot

@@ -134,6 +134,11 @@ extern "C" {
 		static uint64_t lastButtonPressedData[PapyrusVR::VRDevice_LeftController + 1] = {0}; // should be size 3 array at least for all 3 vr devices
 		static_assert(PapyrusVR::VRDevice_LeftController + 1 >= 3, "lastButtonPressedData array size too small!");
 		
+		if (!g_quickslotMgr->IsTrackingDataValid())
+		{
+			return false;
+		}
+
 		vr::TrackedDeviceIndex_t leftcontroller = g_VRSystem->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole::TrackedControllerRole_LeftHand);
 		vr::TrackedDeviceIndex_t rightcontroller = g_VRSystem->GetTrackedDeviceIndexForControllerRole(vr::ETrackedControllerRole::TrackedControllerRole_RightHand);
 
@@ -253,7 +258,7 @@ extern "C" {
 				_MESSAGE("SKSE PostLoad message received, registering for PapyrusVR messages from SkyrimVRTools");  // This log msg may happen before XML is loaded
 				g_messaging->RegisterListener(g_pluginHandle, "SkyrimVRTools", OnPapyrusVRMessage);
 			}
-			else if (msg->type == SKSEMessagingInterface::kMessage_DataLoaded)
+			else if (msg->type == SKSEMessagingInterface::kMessage_InputLoaded)
 			{
 				if (g_papyrusvr)
 				{

@@ -73,6 +73,12 @@ void  CQuickslotManager::GetVRSystem()
 	}
 }
 
+// make sure all pointers for tracking data are valid - error checking
+bool	CQuickslotManager::IsTrackingDataValid() const
+{
+	return (this && mHMDPose && mRightControllerPose && mLeftControllerPose);
+}
+
 void	CQuickslotManager::UpdateHaptics()
 {
 	const unsigned short kVRHapticConstant = 2000;  // max value is 3999 but ue4 suggest max 2000? - time in microseconds to pulse per frame, also described by Valve as "strength"
