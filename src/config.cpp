@@ -26,6 +26,14 @@
 
 bool   CQuickslotManager::ReadConfig(const char* filename)
 {
+	// First, read some INI config from game configs
+
+	Setting* iniLeftHandSetting = GetINISetting("bLeftHandedMode:VRInput");
+	if (iniLeftHandSetting)
+	{
+		mLeftHandedMode = (int)iniLeftHandSetting->data.u8;
+		_MESSAGE("Left Hand Mode: %d", mLeftHandedMode);
+	}
 
 	tinyxml2::XMLDocument xmldoc;
 	tinyxml2::XMLError err = xmldoc.LoadFile(filename);
@@ -51,7 +59,6 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 			elem->QueryIntAttribute("debugloglevel", &mDebugLogVerb);
 			elem->QueryIntAttribute("hapticfeedback", &mHapticOnOverlap);
 			elem->QueryIntAttribute("alloweditslots", &mAllowEditSlots);
-			elem->QueryIntAttribute("lefthandedmode", &mLeftHandedMode);
 			elem->QueryIntAttribute("disablerawapi", &mDisableRawAPI);
 			elem->QueryDoubleAttribute("longpresstime", &mLongPressTime);
 			elem->QueryDoubleAttribute("hoverquickslothaptictime", &mHoverQuickslotHapticTime);
@@ -153,7 +160,6 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 	options->SetAttribute("hapticfeedback", mHapticOnOverlap);
 	options->SetAttribute("alloweditslots", mAllowEditSlots);
 	options->SetAttribute("longpresstime", mLongPressTime);
-	options->SetAttribute("lefthandedmode", mLeftHandedMode);
 	options->SetAttribute("disablerawapi", mDisableRawAPI);
 	options->SetAttribute("controllerradius", mControllerRadius);
 	options->SetAttribute("hoverquickslothaptictime", mHoverQuickslotHapticTime);
