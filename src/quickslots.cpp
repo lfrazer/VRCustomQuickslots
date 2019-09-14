@@ -23,6 +23,9 @@
 #include "quickslotutil.h"
 #include "console.h"
 #include "api/openvr.h"
+#include <algorithm>
+
+#include "MenuChecker.h"
 
 // SKSE includes
 #include "skse64/PapyrusActor.h"
@@ -30,16 +33,21 @@
 #include "skse64/GameForms.h"
 #include "skse64/GameRTTI.h"
 #include "skse64/GameTypes.h"
+#include "skse64/GameExtraData.h"
 
 #define QS_DEBUG_FEATURES   0
 
+RelocAddr <_HasSpell> HasSpell(0x0984420);
+RelocAddr <_ActorEquipItem> ActorEquipItem(0x09849C0);
+RelocAddr <_GetItemCount> GetItemCount(0x09CEC90);
+RelocAddr <_DropObject> DropObject(0x09CE580);
 
 
 CQuickslotManager::CQuickslotManager()
 {
 	MenuManager * mm = MenuManager::GetSingleton();
 	if (mm) {
-		mm->MenuOpenCloseEventDispatcher()->AddEventSink(&this->mMenuEventHandler);
+		mm->MenuOpenCloseEventDispatcher()->AddEventSink(&MenuChecker::menuEvent);
 	}
 	else {
 		QSLOG_ERR("Failed to register SKSE AllMenuEventHandler!");
@@ -47,11 +55,6 @@ CQuickslotManager::CQuickslotManager()
 
 	GetVRSystem();
 
-}
-
-bool	CQuickslotManager::IsMenuOpen()
-{ 
-	return mIsMenuOpen || mMenuLastCloseTime + kMenuBlockDelay > CUtil::GetSingleton().GetLastTime(); 
 }
 
 void  CQuickslotManager::GetVRSystem()
@@ -113,7 +116,7 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 	CUtil::GetSingleton().Update();
 	UpdateHaptics();
 
-	if (mInGame && !IsMenuOpen() && hmdPose->bPoseIsValid && leftCtrlPose->bPoseIsValid && rightCtrlPose->bPoseIsValid)
+	if (mInGame && !MenuChecker::isGameStopped() && hmdPose->bPoseIsValid && leftCtrlPose->bPoseIsValid && rightCtrlPose->bPoseIsValid)
 	{
 		PapyrusVR::Vector3 hmdPos = GetPositionFromVRPose(mHMDPose);
 		PapyrusVR::Matrix33 rotMatrix = CreateRotMatrixAroundY(mHMDPose->mDeviceToAbsoluteTracking);
@@ -228,7 +231,7 @@ bool	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 {
 
 	// check if relevant button was pressed, or if a menu was open and early exit
-	if (buttonId != mActivateButton || IsMenuOpen() || !mInGame)
+	if (buttonId != mActivateButton || MenuChecker::isGameStopped() || !mInGame)
 	{
 		return false;
 	}
@@ -265,8 +268,9 @@ bool	CQuickslotManager::ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::
 bool	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId)
 {
 	// check if relevant button was pressed, or if a menu was open and early exit
-	if (buttonId != mActivateButton || IsMenuOpen() || !mInGame)
+	if (buttonId != mActivateButton || MenuChecker::isGameStopped() || !mInGame)
 	{
+		QSLOG_INFO("Menu open. Cancelling...");
 		return false;
 	}
 
@@ -274,14 +278,150 @@ bool	CQuickslotManager::ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR
 
 	if (quickslot && quickslot->mButtonHoldTime > 0.0)  // only do action if the button was pressed on originally
 	{
-		if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION)
-		{
-			// one action for each hand (right and left)
-			quickslot->DoAction(quickslot->mCommand);
-			quickslot->DoAction(quickslot->mCommandAlt);
+		if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION || !quickslot->mOtherCommands.empty())
+		{			
+			QSLOG_INFO("Order is set to %d...", quickslot->mOrder);
+			if (quickslot->mOrder == CQuickslot::eOrderType::DEFAULT) // one action for each hand (right and left), and execute first one that is applicable
+			{
+				for (UInt32 f = 0; f < quickslot->mCommand.mFormIDList.size(); f++)
+				{
+					if (quickslot->DoAction(quickslot->mCommand, quickslot->mCommand.mFormIDList[f]))
+					{
+						break;
+					}
+				}
+				for (UInt32 f = 0; f < quickslot->mCommandAlt.mFormIDList.size(); f++)
+				{
+					if (quickslot->DoAction(quickslot->mCommandAlt, quickslot->mCommandAlt.mFormIDList[f]))
+					{
+						break;
+					}
+				}
+			}
+			else if(quickslot->mOrder == CQuickslot::eOrderType::FIRST) // execute first one that is applicable
+			{
+				//Here we loop through the commands array to see if we can find an applicable formid to do the action with.
+				//DoAction returns bool value for us to check.
+				bool success = false;
+				for(UInt32 i=0; i<quickslot->mOtherCommands.size(); i++)
+				{					
+					for (UInt32 f = 0; f < quickslot->mOtherCommands[i].mFormIDList.size(); f++)
+					{
+						if (quickslot->DoAction(quickslot->mOtherCommands[i], quickslot->mOtherCommands[i].mFormIDList[f]))
+						{
+							success = true;
+							break;
+						}
+					}
+					
+					if(success)
+					{
+						break;
+					}
+				}
+			}
+			else if (quickslot->mOrder == CQuickslot::eOrderType::RANDOM) // execute random one that is applicable
+			{
+				//Random function creates a possibilities array to select a random command and formid from that command.
+				//To ensure that possible variable is never selected again, possibilities array item is deleted after each false return from DoAction.
+				if (!quickslot->mOtherCommands.empty())
+				{
+					std::vector<int> possibilities(quickslot->mOtherCommands.size());
+					for (UInt32 i = 0; i < quickslot->mOtherCommands.size(); i++)
+					{
+						possibilities[i] = i;
+					}
+
+					for (UInt32 i = 0; i < quickslot->mOtherCommands.size(); i++)
+					{
+						if (possibilities.empty())
+							break;
+						
+						bool success = false;
+						const int randIndex = randomGenerator(0, possibilities.size()-1);
+
+						int positionIndex = possibilities[randIndex];
+						if (!quickslot->mOtherCommands[positionIndex].mFormIDList.empty())
+						{
+							std::vector<int> formIdPossibilities(quickslot->mOtherCommands[positionIndex].mFormIDList.size());
+							for (UInt32 p = 0; p < quickslot->mOtherCommands[positionIndex].mFormIDList.size(); p++)
+							{
+								formIdPossibilities[p] = p;
+							}
+
+							for (UInt32 f = 0; f < quickslot->mOtherCommands[positionIndex].mFormIDList.size(); f++)
+							{
+								if (formIdPossibilities.empty())
+									break;
+
+								const int randFormIdIndex = randomGenerator(0, formIdPossibilities.size()-1);
+								int position2Index = formIdPossibilities[randFormIdIndex];
+								if (quickslot->DoAction(quickslot->mOtherCommands[positionIndex], quickslot->mOtherCommands[positionIndex].mFormIDList[position2Index]))
+								{
+									success = true;
+									break;
+								}
+								else
+								{
+									formIdPossibilities.erase(std::remove(formIdPossibilities.begin(), formIdPossibilities.end(), position2Index), formIdPossibilities.end());
+								}
+							}
+						}
+						if (success)
+						{
+							break;
+						}
+						else
+						{
+							possibilities.erase(std::remove(possibilities.begin(), possibilities.end(), positionIndex), possibilities.end());
+						}
+					}
+				}
+				
+			}
+			else if (quickslot->mOrder == CQuickslot::eOrderType::ALL) // execute all commands that are applicable
+			{
+				//Here we loop through the commands array and call DoAction for all the commands. But only one of the formIds if multiple are supplied.
+				for (UInt32 i = 0; i<quickslot->mOtherCommands.size(); i++)
+				{
+					for (UInt32 f = 0; f < quickslot->mCommand.mFormIDList.size(); f++)
+					{
+						if (quickslot->DoAction(quickslot->mOtherCommands[i], quickslot->mCommand.mFormIDList[f])) //Use only one of the possible formIds.
+						{
+							break;
+						}
+					}
+				}
+			}
+			else if (quickslot->mOrder == CQuickslot::eOrderType::TOGGLE) //Skip currently equipped stuff and execute first one that is applicable
+			{
+				//This is almost the same as eOrderType::FIRST cause above. We also check if the form is currently equipped right now and skip it.
+				//If the user defines 2 items and selects this order, this makes them to toggle the spell, hence the order name.
+				bool success = false;
+				for (UInt32 i = 0; i<quickslot->mOtherCommands.size(); i++)
+				{
+					for (UInt32 f = 0; f < quickslot->mOtherCommands[i].mFormIDList.size(); f++)
+					{
+						if (!FormCurrentlyEquipped(quickslot->mOtherCommands[i].mFormIDList[f]))
+						{
+							if (quickslot->DoAction(quickslot->mOtherCommands[i], quickslot->mOtherCommands[i].mFormIDList[f]))
+							{
+								success = true;
+								break;
+							}
+						}
+					}
+
+					if (success)
+					{
+						break;
+					}
+				}
+			}
 		}
 		else
 		{
+			QSLOG_INFO("No action set for this quickslot...");
 			// short haptic feedback if no action is set for the quickslot
 			vr::ETrackedControllerRole controllerRole = (deviceId == PapyrusVR::VRDevice_LeftController) ? vr::TrackedControllerRole_LeftHand : vr::TrackedControllerRole_RightHand;
 
@@ -352,6 +492,11 @@ int		CQuickslotManager::GetEffectiveSlot(int inSlot)
 	return inSlot;
 }
 
+PapyrusVR::EVRButtonId CQuickslotManager::GetActivateButton() const
+{
+	return mActivateButton;
+}
+
 
 void	CQuickslotManager::Reset()
 {
@@ -360,100 +505,170 @@ void	CQuickslotManager::Reset()
 	mInGame = false;
 }
 
-
-
-EventResult CQuickslotManager::AllMenuEventHandler::ReceiveEvent(MenuOpenCloseEvent * evn, EventDispatcher<MenuOpenCloseEvent> * dispatcher)
-{
-	if (evn->opening)
-	{
-		MenuOpenEvent(evn->menuName.c_str());
-	}
-	else
-	{
-		MenuCloseEvent(evn->menuName.c_str());
-	}
-
-	return EventResult::kEvent_Continue;
-}
-
-bool CQuickslotManager::AllMenuEventHandler::IsIgnoredMenu(const char* name)
-{
-	return streq(name, "WSActivateRollover") || streq(name, "Fader Menu") || streq(name, "HUD Menu") || streq(name, "WSEnemyMeters") || streq(name, "WSDebugOverlay") || streq(name, "Overlay Interaction Menu") || streq(name, "Overlay Menu")
-		|| streq(name, "StatsMenu") || streq(name, "TitleSequence Menu") || streq(name, "Top Menu");
-	
-}
-
-void CQuickslotManager::AllMenuEventHandler::MenuOpenEvent(const char* menuName)
-{
-	if (!IsIgnoredMenu(menuName))
-	{
-	
-		CQuickslotManager::GetSingleton().mIsMenuOpen = true;
-	}
-
-	//QSLOG_INFO("MenuOpenEvent: %s", menuName);
-}
-
-void CQuickslotManager::AllMenuEventHandler::MenuCloseEvent(const char* menuName)
-{
-	if (!IsIgnoredMenu(menuName))
-	{
-
-		CQuickslotManager::GetSingleton().mMenuLastCloseTime = CUtil::GetSingleton().GetLastTime();
-		CQuickslotManager::GetSingleton().mIsMenuOpen = false;
-	}
-
-	//QSLOG_INFO("MenuCloseEvent: %s", menuName);
-}
-
-
 void CQuickslot::PrintInfo()
 {
 	QSLOG_INFO("Quickslot (%s) position: (%f,%f,%f) radius: %f", this->mName.c_str(), mPosition.x, mPosition.y, mPosition.z, mRadius);
 }
 
-void CQuickslot::DoAction(const CQuickslotCmd& cmd)
+//Checks if player has the item in their inventory. Calls GetItemCount Native function and checks if it's bigger than 0.
+bool CQuickslot::PlayerHasItem(TESForm * itemForm)
+{
+	return GetItemCount((*g_skyrimVM)->GetClassRegistry(), 0, (Actor*)(*g_thePlayer), itemForm) != 0;
+}
+
+bool CQuickslot::DoAction(const CQuickslotCmd& cmd, UInt32 formId)
 {
 	if (cmd.mAction == EQUIP_ITEM)
 	{
-		TESForm* itemFormObj = LookupFormByID(cmd.mFormID);
-		papyrusActor::EquipItemEx( (Actor*)(*g_thePlayer), itemFormObj, CQuickslotManager::GetSingleton().GetEffectiveSlot(cmd.mSlot), false, true);
-	}
-	else if (cmd.mAction == EQUIP_SPELL)
-	{
-		const char* slotNames[3] = { "default", "right", "left" };  // should match eSlotType
-		const size_t cmdBufferSize = 255;
-		char cmdBuffer[cmdBufferSize];
-
-		if (cmd.mSlot == SLOT_DEFAULT)  // equip in both hands if its slot default
+		TESForm* itemFormObj = LookupFormByID(formId);
+		if (itemFormObj != nullptr)
 		{
-			sprintf_s(cmdBuffer, cmdBufferSize, "player.equipspell %x left", cmd.mFormID);
-			CSkyrimConsole::RunCommand(cmdBuffer);
-
-			sprintf_s(cmdBuffer, cmdBufferSize, "player.equipspell %x right", cmd.mFormID);
-			CSkyrimConsole::RunCommand(cmdBuffer);
-		}
-		else if(cmd.mSlot <= SLOT_LEFTHAND)
-		{
-			sprintf_s(cmdBuffer, cmdBufferSize, "player.equipspell %x %s", cmd.mFormID, slotNames[CQuickslotManager::GetSingleton().GetEffectiveSlot(cmd.mSlot)]);
-			CSkyrimConsole::RunCommand(cmdBuffer);
+			if (PlayerHasItem(itemFormObj)) //We check if player has the item and return false if they do not.
+			{
+				QSLOG_INFO("Equipping item formId: %x", formId);
+				if (!EquipItemEx((Actor*)(*g_thePlayer), itemFormObj, CQuickslotManager::GetSingleton().GetEffectiveSlot(cmd.mSlot), false, true))
+				{
+					QSLOG_INFO("Item cannot be equipped: %x", formId);
+					return false;
+				}
+			}
+			else
+			{
+				QSLOG_INFO("Player doesn't have object with formId: %x", formId);
+				return false;
+			}
 		}
 		else
 		{
-			QSLOG_ERR("Invalid slot Type %d for spell: %x equip.", cmd.mSlot, cmd.mFormID);
+			QSLOG_ERR("Invalid item formId: %x", formId);
+			return false;
+		}
+	}
+	else if(cmd.mAction == EQUIP_OTHER)
+	{		
+		TESForm* itemFormObj = LookupFormByID(formId);		
+		if (itemFormObj != nullptr)
+		{
+			QSLOG_INFO("Checking if player has object with formid: %x", formId);
+			if (PlayerHasItem(itemFormObj)) //We check if player has the item and return false if they do not.
+			{
+				QSLOG_INFO("Equipping item formId: %x", formId);
+				g_task->AddTask(new taskActorEquipItem(itemFormObj));
+			}
+			else
+			{
+				QSLOG_INFO("Player doesn't have object with formId: %x", formId);
+				return false;
+			}
+		}
+		else
+		{
+			QSLOG_ERR("Invalid item formId: %x", formId);
+			return false;
+		}
+	}
+	else if (cmd.mAction == DROP_OBJECT)
+	{
+		TESForm* itemFormObj = LookupFormByID(formId);
+		if (itemFormObj != nullptr)
+		{
+			QSLOG_INFO("Checking if player has object with formid: %x", formId);
+			if (PlayerHasItem(itemFormObj)) //We check if player has the item and return false if they do not.
+			{
+				QSLOG_INFO("Dropping item formId: %x", formId);
+				DropObject((*g_skyrimVM)->GetClassRegistry(), 0, (Actor*)(*g_thePlayer), itemFormObj, cmd.mCount);
+			}
+			else
+			{
+				QSLOG_INFO("Player doesn't have object with formId: %x", formId);
+				return false;
+			}
+		}
+		else
+		{
+			QSLOG_ERR("Invalid item formId: %x", formId);
+			return false;
+		}
+	}
+	else if (cmd.mAction == EQUIP_SPELL)
+	{
+		TESForm * spellForm = LookupFormByID(formId);
+
+		if (spellForm != nullptr)
+		{
+			//Check if player knows the spell to prevent cheating
+			if (HasSpell((*g_skyrimVM)->GetClassRegistry(), 0, (Actor*)(*g_thePlayer), spellForm))
+			{
+				const char* slotNames[3] = { "default", "right", "left" };  // should match eSlotType
+				const size_t cmdBufferSize = 255;
+				char cmdBuffer[cmdBufferSize];
+
+				if (cmd.mSlot == SLOT_DEFAULT)  // equip in both hands if its slot default
+				{
+					sprintf_s(cmdBuffer, cmdBufferSize, "player.equipspell %x left", formId);
+					CSkyrimConsole::RunCommand(cmdBuffer);
+
+					sprintf_s(cmdBuffer, cmdBufferSize, "player.equipspell %x right", formId);
+					CSkyrimConsole::RunCommand(cmdBuffer);
+				}
+				else if (cmd.mSlot <= SLOT_LEFTHAND)
+				{
+					sprintf_s(cmdBuffer, cmdBufferSize, "player.equipspell %x %s", formId, slotNames[CQuickslotManager::GetSingleton().GetEffectiveSlot(cmd.mSlot)]);
+					CSkyrimConsole::RunCommand(cmdBuffer);
+				}
+				else
+				{
+					QSLOG_ERR("Invalid slot Type %d for spell: %x equip.", cmd.mSlot, formId);
+					return false;
+				}
+			}
+			else
+			{
+				QSLOG_INFO("Player doesn't know spell: %x", formId);
+				return false;
+			}
+		}
+		else
+		{
+			QSLOG_ERR("Invalid spell formId: %x", formId);
+			return false;
 		}
 	}
 	else if (cmd.mAction == EQUIP_SHOUT)
 	{
-		const size_t cmdBufferSize = 255;
-		char cmdBuffer[cmdBufferSize];
-		sprintf_s(cmdBuffer, cmdBufferSize, "player.equipshout %x", cmd.mFormID);
-		CSkyrimConsole::RunCommand(cmdBuffer);
+		TESForm * spellForm = LookupFormByID(formId);
+
+		if (spellForm != nullptr)
+		{
+			//Check if player knows the shout to prevent cheating
+			if (HasSpell((*g_skyrimVM)->GetClassRegistry(), 0, (Actor*)(*g_thePlayer), spellForm))
+			{
+				const size_t cmdBufferSize = 255;
+				char cmdBuffer[cmdBufferSize];
+				sprintf_s(cmdBuffer, cmdBufferSize, "player.equipshout %x", formId);
+				CSkyrimConsole::RunCommand(cmdBuffer);
+			}
+			else
+			{
+				QSLOG_INFO("Player doesn't know shout: %x", formId);
+				return false;
+			}
+		}
+		else
+		{
+			QSLOG_ERR("Invalid shout formId: %x", formId);
+			return false;
+		}
 	}
 	else if (cmd.mAction == CONSOLE_CMD)
 	{
-		CSkyrimConsole::RunCommand(cmd.mCommand.c_str());
+		CSkyrimConsole::RunCommand(cmd.mConsoleCommand.c_str());
 	}
+	else
+	{
+		return false;
+	}
+	return true;
 }
 
 // Set a new action on quickslot
@@ -480,7 +695,18 @@ void CQuickslot::SetAction(PapyrusVR::VRDevice deviceId)
 		}
 
 		mCommand.mSlot = slot;
-		mCommand.mFormID = formObj->formID;
+		mCommand.mFormIDList.clear();
+		mCommand.mFormIDList.emplace_back(formObj->formID);
+		mCommand.mConsoleCommand = "";
+		mCommand.mItemType = 0;
+		mCommand.mFormIdStr = "";
+		mCommand.mKeyword = "";
+		mCommand.mKeywordNot = "";
+		mCommand.mPluginName = "";
+		mCommand.mFood = 1;
+		mCommand.mPoison = 1;
+		mCommand.mPotion = 1;
+		mCommand.mCount = 1;
 
 		QSLOG("Set new action formid=%x on quickslot %s, slotID=%d effectiveSlot=%d", formObj->formID, this->mName.c_str(), slot, effectiveSlot);
 	}
@@ -490,13 +716,37 @@ void CQuickslot::SetAction(PapyrusVR::VRDevice deviceId)
 void CQuickslot::UnsetAction()
 {
 	mCommand.mAction = NO_ACTION;
-	mCommand.mFormID = 0;
+	mCommand.mFormIDList.clear();
 	mCommandAlt.mAction = NO_ACTION;
-	mCommandAlt.mFormID = 0;
+	mCommandAlt.mFormIDList.clear();
+	mCommand.mConsoleCommand = "";
+	mCommand.mItemType = 0;
+	mCommand.mFormIdStr = "";
+	mCommand.mKeyword = "";
+	mCommand.mKeywordNot = "";
+	mCommand.mPluginName = "";
+	mCommand.mFood = 1;
+	mCommand.mPoison = 1;
+	mCommand.mPotion = 1;
+	mCommand.mCount = 1;
 
 }
 
+//ActorEquipItem TaskDelegate functions
+taskActorEquipItem::taskActorEquipItem(TESForm* akItem)
+{
+	m_akItem = akItem;
+}
 
+void taskActorEquipItem::Run()
+{
+	ActorEquipItem((*g_skyrimVM)->GetClassRegistry(), 0, (Actor*)(*g_thePlayer), m_akItem, false, false);
+}
+
+void taskActorEquipItem::Dispose()
+{
+	delete this;
+}
 
 
 

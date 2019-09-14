@@ -158,6 +158,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="src\console.h" />
+    <ClInclude Include="src\MenuChecker.h" />
     <ClInclude Include="src\quickslots.h" />
     <ClInclude Include="src\quickslotutil.h" />
     <ClInclude Include="src\tinyxml2.h" />
@@ -167,6 +168,7 @@
     <ClCompile Include="src\api\PapyrusVRTypes.cpp" />
     <ClCompile Include="src\config.cpp" />
     <ClCompile Include="src\console.cpp" />
+    <ClCompile Include="src\MenuChecker.cpp" />
     <ClCompile Include="src\quickslots.cpp" />
     <ClCompile Include="src\timer.cpp" />
     <ClCompile Include="src\tinyxml2.cpp" />

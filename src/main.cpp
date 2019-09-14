@@ -33,6 +33,7 @@
 static PluginHandle					g_pluginHandle = kPluginHandle_Invalid;
 static SKSEPapyrusInterface         * g_papyrus = NULL;
 static SKSEMessagingInterface		* g_messaging = NULL;
+SKSETaskInterface				* g_task = NULL;
 
 PapyrusVRAPI*	g_papyrusvr = nullptr;
 CQuickslotManager* g_quickslotMgr = nullptr;
@@ -88,6 +89,8 @@ extern "C" {
 		_MESSAGE("VRCustomQuickslots loaded");
 
 		g_papyrus = (SKSEPapyrusInterface *)skse->QueryInterface(kInterface_Papyrus);
+
+		g_task = (SKSETaskInterface *)skse->QueryInterface(kInterface_Task);
 
 		//Registers for SKSE Messages (PapyrusVR probably still need to load, wait for SKSE message PostLoad)
 		_MESSAGE("Registering for SKSE messages");
@@ -157,8 +160,9 @@ extern "C" {
 
 		if (deviceId != PapyrusVR::VRDevice_Unknown)
 		{
-			const auto buttonId = PapyrusVR::k_EButton_SteamVR_Trigger;
-			const uint64_t buttonMask = ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger);  // annoying issue where PapyrusVR and openvr enums are not type-compatible..
+			//We get the activate button from config now so, getting it by function.
+			const auto buttonId = g_quickslotMgr->GetActivateButton();
+			const uint64_t buttonMask = ButtonMaskFromId((vr::EVRButtonId)buttonId);  // annoying issue where PapyrusVR and openvr enums are not type-compatible..
 
 			// right now only check for trigger press.  In future support input binding?
 			if (pControllerState->ulButtonPressed & buttonMask && !(lastButtonPressedData[deviceId] & buttonMask))
@@ -258,7 +262,7 @@ extern "C" {
 				_MESSAGE("SKSE PostLoad message received, registering for PapyrusVR messages from SkyrimVRTools");  // This log msg may happen before XML is loaded
 				g_messaging->RegisterListener(g_pluginHandle, "SkyrimVRTools", OnPapyrusVRMessage);
 			}
-			else if (msg->type == SKSEMessagingInterface::kMessage_InputLoaded)
+			else if (msg->type == SKSEMessagingInterface::kMessage_DataLoaded) //This is needed because we check plugins for items now in ReadConfig function.
 			{
 				if (g_papyrusvr)
 				{

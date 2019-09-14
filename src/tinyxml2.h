@@ -1382,7 +1382,15 @@ public:
 		return XML_SUCCESS;
 	}
 
-
+	// Copy of QueryStringAttribute that returns std::string instead.
+	XMLError QueryString2Attribute(const char* name, std::string *value) const {
+		const XMLAttribute* a = FindAttribute(name);
+		if (!a) {
+			return XML_NO_ATTRIBUTE;
+		}
+		*value = a->Value();
+		return XML_SUCCESS;
+	}
 
     /** Given an attribute name, QueryAttribute() returns
     	XML_SUCCESS, XML_WRONG_ATTRIBUTE_TYPE if the conversion

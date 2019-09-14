@@ -27,10 +27,12 @@
 #include <string>
 #include <vector>
 
+#include "skse64/InternalTasks.h"
 #include "skse64/PapyrusEvents.h"
 #include "common/ISingleton.h"
 
 #include "timer.h"
+#include "quickslotutil.h"
 
 // forward decl
 namespace vr
@@ -57,7 +59,24 @@ public:
 		EQUIP_ITEM,
 		EQUIP_SPELL,
 		EQUIP_SHOUT,
-		CONSOLE_CMD
+		EQUIP_OTHER, //To be used for potions,food,misc items etc.		
+		CONSOLE_CMD,
+		DROP_OBJECT  //Some mods use this functionality like BasicCampGear
+	};
+
+	enum eItemType
+	{
+		Ingestible = 1,
+		Ammunition = 2		
+	};
+
+	enum eOrderType
+	{
+		DEFAULT = 0,
+		FIRST = 1,
+		RANDOM = 2,
+		ALL = 3,
+		TOGGLE = 4
 	};
 
 	// Quickslot action / cmd structure, what should the quickslot do?
@@ -66,19 +85,47 @@ public:
 	{
 		eCmdActionType mAction = NO_ACTION;
 		int mSlot = SLOT_DEFAULT;  // slot (which hand to use)
-		unsigned int mFormID = 0;  // Form object (item/spell/shout) numerical ID
-		std::string mCommand;  // console command
+		std::vector<UInt32> mFormIDList;  // Form object (item/spell/shout) numerical ID
+		std::string mConsoleCommand;  // console command
+
+		//Extra stuff to be saved 
+		std::string mPluginName;
+		std::string mFormIdStr;
+		int mItemType = 0;
+		std::string mKeyword;     //Included keywords
+		std::string mKeywordNot;  //Excluded keywords
+		int mPotion = 1;
+		int mFood = 1;
+		int mPoison = 1;
+		int mCount = 1;
 	};
 
 	CQuickslot() = default;
-	CQuickslot(PapyrusVR::Vector3 pos, float radius, const CQuickslotCmd& cmd, const CQuickslotCmd& cmdAlt, const char* name = nullptr)
+	CQuickslot(PapyrusVR::Vector3 pos, float radius, std::vector<CQuickslotCmd> cmdList, int order, const char* name = nullptr)
 	{
 		mPosition = pos;
 		mOrigin = pos;
 		mRadius = radius;
-		mCommand = cmd;
-		mCommandAlt = cmdAlt;
-		
+		mOrder = order;
+		if (mOrder == eOrderType::DEFAULT)
+		{
+			if (!cmdList.empty())
+			{
+				mCommand = cmdList[0];
+
+				QSLOG_INFO("Quickslot %s created with command: %d", name, mCommand.mAction);
+				if (cmdList.size() > 1)
+				{
+					mCommandAlt = cmdList[1];
+					QSLOG_INFO("Quickslot %s created with commandAlt: %d", name, mCommandAlt.mAction);
+				}
+			}			
+		}
+		else
+		{
+			mOtherCommands = cmdList;
+			QSLOG_INFO("Quickslot created with multiple commands: %d", mOtherCommands.size());
+		}
 		if (name)
 		{
 			mName = name;
@@ -86,10 +133,10 @@ public:
 	}
 
 	void PrintInfo();  // log information about this quickslot (debugging)
-	void DoAction(const CQuickslotCmd& cmd);  // perform set quickslot action (call on button press)
+	bool DoAction(const CQuickslotCmd& cmd, UInt32 formId);  // perform set quickslot action (call on button press)
 	void SetAction(PapyrusVR::VRDevice deviceId); // set quickslot action to currently used item or spell
 	void UnsetAction();  // unset the action (remove any action from the slot, the user can later equip it with a new action)
-
+	bool PlayerHasItem(TESForm * itemForm); //Checks if player has the item
 
 protected:
 	PapyrusVR::Vector3	mPosition;		// current position of quickslot (center of sphere)
@@ -97,26 +144,21 @@ protected:
 	float				mRadius = 0.0f;	// radius of sphere
 	CQuickslotCmd		mCommand;   // one command to equip each hand
 	CQuickslotCmd		mCommandAlt;
+	std::vector<CQuickslotCmd> mOtherCommands; //command list to be used with order != 0
 	std::string			mName;			// name of quickslot for debugging
 	double				mLastOverlapTime = 0.0;  // last overlap time
 	double				mButtonHoldTime = 0.0; // track time user held button on this quickslot
-
+	int					mOrder = eOrderType::DEFAULT; //Order to select which commands to execute. 0 means default usage with one command to equip each hand.
+										//1 means execute first one that is applicable(item in user's inventory, player knows the spell/shout etc.)
+										//2 means execute random one that is applicable(item in user's inventory, player knows the spell/shout etc.)
+										//3 means execute all commands that are applicable(item in user's inventory, player knows the spell/shout etc.)
+										//4 means execute first one that is not currently equipped(toggles it) and applicable(item in user's inventory, player knows the spell/shout etc.)
 
 };
 
 
 class CQuickslotManager: public ISingleton<CQuickslotManager>
 {
-	friend class AllMenuEventHandler;
-
-	class AllMenuEventHandler : public BSTEventSink <MenuOpenCloseEvent>
-	{
-	public:
-		virtual EventResult	ReceiveEvent(MenuOpenCloseEvent * evn, EventDispatcher<MenuOpenCloseEvent> * dispatcher) override;
-		void MenuOpenEvent(const char* menuName);
-		void MenuCloseEvent(const char* menuName);
-		bool IsIgnoredMenu(const char* menuName);
-	};
 
 public:
 
@@ -134,10 +176,7 @@ public:
 	bool			ButtonPress(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
 	bool			ButtonRelease(PapyrusVR::EVRButtonId buttonId, PapyrusVR::VRDevice deviceId);
 	void			Reset(); // Reset quickslot manager data
-
-	// check when menu is open, plus for a short delay after it has been closed
-	bool			IsMenuOpen();
-
+	
 	// start haptic response for <timeLenght>, pass in LeftHand or RightHand controller from enum
 	void			StartHaptics(vr::ETrackedControllerRole controller, double timeLength); 
 	void			UpdateHaptics(); // called every frame to update haptic response
@@ -145,6 +184,7 @@ public:
 	void			SetInGame(bool flag) { mInGame = flag; }
 	int				AllowEdit() const { return mAllowEditSlots; }
 	int				DisableRawAPI() const { return mDisableRawAPI; }
+	PapyrusVR::EVRButtonId GetActivateButton() const;
 
 	void			SetHookMgr(OpenVRHookManagerAPI* hookMgr) 
 	{ 
@@ -160,8 +200,6 @@ private:
 
 	int								mLastVRError = 0;
 	vr::IVRSystem*					mVRSystem = nullptr;
-
-	AllMenuEventHandler				mMenuEventHandler;
 
 	// VR hook manager for new RAW api
 	OpenVRHookManagerAPI*			mHookMgrAPI = nullptr;
@@ -180,15 +218,34 @@ private:
 	int								mLeftHandedMode = 0;  // left handed mode? 
 	int								mDisableRawAPI = 0; // if true, do not attempt to load new Raw OpenVR API
 	float							mDefaultRadius = 0.1f;
-	bool							mIsMenuOpen = false; // use events to block quickslots when menu is open, set this flag to true when menu is open
-	bool							mInGame = false; // do not start processing until in-game (after load game or new game event from SKSE)
-	double							mMenuLastCloseTime = -1.0; // track the last time the menu was closed (negative means invalid time / do not track time)
+	bool							mInGame = false; // do not start processing until in-game (after load game or new game event from SKSE)	
 	double							mLongPressTime = 3.0;  // length of time to trigger long press action
 	double							mShortPressTime = 0.3; // lenght of time to trigger short press action (basically to check if more than a single click)
 	double							mControllerHapticTime[2] = { 0.0 };
 	double							mHoverQuickslotHapticTime = 0.05; // length of time to send haptics when hovering over a quickslot (disable if <= 0)
 
-	// constants
-	const double					kMenuBlockDelay = 0.25;  // time in seconds to block actions after menu was closed
+};
 
+typedef bool(*_HasSpell)(VMClassRegistry * registry, UInt64 stackID, Actor *actor, TESForm *akSpell);
+extern RelocAddr <_HasSpell> HasSpell;
+
+typedef void(*_ActorEquipItem)(VMClassRegistry * registry, UInt64 stackID, Actor *actor, TESForm *akItem, bool abPreventRemoval, bool abSilent);
+extern RelocAddr <_ActorEquipItem> ActorEquipItem;
+
+typedef UInt32(*_GetItemCount)(VMClassRegistry * registry, UInt64 stackID, TESObjectREFR *actorRefr, TESForm *akItem);
+extern RelocAddr <_GetItemCount> GetItemCount;
+
+typedef TESObjectREFR*(*_DropObject)(VMClassRegistry * registry, UInt64 stackID, TESObjectREFR *actorRefr, TESForm *akItem, int aiCount);
+extern RelocAddr <_DropObject> DropObject;
+
+extern SKSETaskInterface	* g_task;
+
+class taskActorEquipItem : public TaskDelegate
+{
+public:
+	virtual void Run();
+	virtual void Dispose();
+
+	taskActorEquipItem(TESForm* akItem);
+	TESForm* m_akItem;
 };

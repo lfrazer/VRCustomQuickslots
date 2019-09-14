@@ -22,6 +22,9 @@
 #include "quickslots.h"
 #include "quickslotutil.h"
 #include "tinyxml2.h"
+#include "skse64/GameData.h"
+#include "skse64/PapyrusKeyword.h"
+#include "skse64/PapyrusGameData.cpp"
 
 
 bool   CQuickslotManager::ReadConfig(const char* filename)
@@ -51,8 +54,7 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 	tinyxml2::XMLElement* root = xmldoc.RootElement();
 
 	for (tinyxml2::XMLElement* elem = root->FirstChildElement(); elem; elem = elem->NextSiblingElement())
-	{
-		
+	{		
 		if (strcmp(elem->Name(), "options") == 0)
 		{
 			elem->QueryFloatAttribute("defaultradius", &mDefaultRadius);
@@ -62,6 +64,13 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 			elem->QueryIntAttribute("disablerawapi", &mDisableRawAPI);
 			elem->QueryDoubleAttribute("longpresstime", &mLongPressTime);
 			elem->QueryDoubleAttribute("hoverquickslothaptictime", &mHoverQuickslotHapticTime);
+			
+			int activateButtonId = 0;
+			elem->QueryIntAttribute("activatebutton", &activateButtonId);
+			if(activateButtonId!=0)
+			{
+				mActivateButton = (PapyrusVR::EVRButtonId)activateButtonId;
+			}
 
 			mControllerRadius = mDefaultRadius;
 
@@ -69,69 +78,257 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 
 			CUtil::GetSingleton().SetLogLevel(mDebugLogVerb);
 		}
-
 		else if (strcmp(elem->Name(), "quickslot") == 0)
 		{
 			float position[3];
 			float radius = mDefaultRadius;
-			CQuickslot::CQuickslotCmd cmd[2]; // two commands, one for each hand
+			std::vector<CQuickslot::CQuickslotCmd> cmdList; // two commands, one for each hand
 			const char* altCmd = "none";
 			const char* slotname = nullptr;
+			int order = CQuickslot::eOrderType::DEFAULT;
 
 			elem->QueryFloatAttribute("posx", &position[0]);
 			elem->QueryFloatAttribute("posy", &position[1]);
 			elem->QueryFloatAttribute("posz", &position[2]);
 			elem->QueryFloatAttribute("radius", &radius);
 			elem->QueryStringAttribute("name", &slotname);
+			elem->QueryIntAttribute("order", &order);
 
-			int cmdCount = 0;
 			for(tinyxml2::XMLElement* subElem = elem->FirstChildElement(); subElem; subElem = subElem->NextSiblingElement())
 			{
-				if (cmdCount < 2)
+				//Order type eOrderType::DEFAULT only allows 2 commands(Command and CommandAlt) but other order types can get as many as they can.
+				if (cmdList.size() < 2 || order != CQuickslot::eOrderType::DEFAULT) 
 				{
+					CQuickslot::CQuickslotCmd cmd;
 					if (strcmp(subElem->Name(), "equipitem") == 0)
 					{
-						cmd[cmdCount].mAction = CQuickslot::EQUIP_ITEM;
+						cmd.mAction = CQuickslot::EQUIP_ITEM;
+					}
+					else if (strcmp(subElem->Name(), "equipother") == 0)
+					{
+						cmd.mAction = CQuickslot::EQUIP_OTHER;
 					}
 					else if (strcmp(subElem->Name(), "equipspell") == 0)
 					{
-						cmd[cmdCount].mAction = CQuickslot::EQUIP_SPELL;
+						cmd.mAction = CQuickslot::EQUIP_SPELL;
 					}
 					else if (strcmp(subElem->Name(), "equipshout") == 0)
 					{
-						cmd[cmdCount].mAction = CQuickslot::EQUIP_SHOUT;
+						cmd.mAction = CQuickslot::EQUIP_SHOUT;
 					}
 					else if (strcmp(subElem->Name(), "consolecmd") == 0)
 					{
-						cmd[cmdCount].mAction = CQuickslot::CONSOLE_CMD;
+						cmd.mAction = CQuickslot::CONSOLE_CMD;
+					}
+					else if (strcmp(subElem->Name(), "dropobject") == 0)
+					{
+						cmd.mAction = CQuickslot::DROP_OBJECT;
 					}
 
-					const char* formIdStr;
-					subElem->QueryStringAttribute("formid", &formIdStr);
-					if (formIdStr != nullptr)
+					DataHandler * dataHandler = DataHandler::GetSingleton();
+					std::string pluginNumber = "";
+					bool allPlugins = true;
+					UInt8 modIndex = 0;
+					std::string formIdString;
+					subElem->QueryString2Attribute("formid", &formIdString);
+					std::vector<std::string> formIdStringList;
+					if (formIdString.length() > 0)
+					{						
+						trim(formIdString);
+						
+						//QSLOG_INFO("FormId string in slot %s -> %s", slotname, formIdString.c_str());
+						
+						//We save this for when we write the xml file.
+						cmd.mFormIdStr = formIdString;
+
+						//FormId attribute can get many formids. We separate it by ",".
+						std::vector<std::string> splittedByPlugin = split(formIdString, ',');
+
+						if (!splittedByPlugin.empty())
+						{
+							for (std::string elemFormIdStr : splittedByPlugin)
+							{
+								trim(elemFormIdStr);
+								if (elemFormIdStr.length() > 0)
+								{
+									QSLOG_INFO("Adding formId string to array: %s", elemFormIdStr.c_str());
+									formIdStringList.emplace_back(elemFormIdStr);
+								}
+							}
+						}
+					}
+
+					std::string pluginName;
+					subElem->QueryString2Attribute("pluginname", &pluginName);
+					if(pluginName.length()>0)
 					{
-						cmd[cmdCount].mFormID = std::stoul(formIdStr, nullptr, 16);  // convert hex string to int
+						cmd.mPluginName = pluginName;
+						//We get the mod index of the plugin
+						modIndex = dataHandler->GetModIndex(pluginName.c_str());
+						if (modIndex != 255) //If plugin is in the load order.
+						{
+							allPlugins = false;
+							if (modIndex >= 0)
+							{
+								pluginNumber = num2hex(modIndex, 2);
+								QSLOG_INFO("%s Pluginname: %s -> %s", slotname, pluginName.c_str(), pluginNumber.c_str());
+							}
+						}
+						else
+						{
+							//Plugin name doesn't exist in current load order, skipping this element
+							continue;
+						}
+					}
+
+					if (!formIdStringList.empty())
+					{
+						for (std::string formIdStrElement : formIdStringList)
+						{
+							if (formIdStrElement.length() == 0)
+								continue;
+
+							//We fill the missing hex chars with zeroes
+							if (formIdStrElement.length() < 6)
+							{
+								for (int l = 0; l < 6 - formIdStrElement.length(); l++)
+								{
+									formIdStrElement = "0" + formIdStrElement;
+								}
+							}
+
+							//If there is a pluginName defined, we use that pluginNumber instead of the supplied one if supplied.
+							if (!pluginNumber.empty())
+							{
+								if (formIdStrElement.length() == 8 && pluginNumber.length() == 2)
+								{
+									formIdStrElement = formIdStrElement.substr(2, 6);
+								}
+								
+								formIdStrElement = pluginNumber + formIdStrElement;
+							}
+
+							UInt32 formId = getHex(formIdStrElement);  // convert hex string to int
+
+							if (formId > 0)
+							{
+								//QSLOG_INFO("FormId found for slot %s: %x - formIdStrElement: %s pluginNumber: %s", slotname, formId, formIdStrElement.c_str(), pluginNumber.c_str());
+
+								//We check if the formid is correct and corresponds to a real formid in the game.
+								TESForm* formObj = LookupFormByID(formId);
+								if (formObj != nullptr)
+								{
+									cmd.mFormIDList.emplace_back(formId);
+								}
+								else
+								{
+									QSLOG_INFO("Bad FormId for slot %s, modIndex: %x formIdstr: %s", slotname, modIndex, formIdStrElement.c_str());
+								}
+							}
+							else
+							{
+								QSLOG_INFO("Bad FormId for slot %s, modIndex: %x formIdstr: %s", slotname, modIndex, formIdStrElement.c_str());
+							}
+						}
+					}
+
+					//This is used for dropobject only.
+					subElem->QueryIntAttribute("count", &cmd.mCount);
+
+					int itemType = 0;
+					subElem->QueryIntAttribute("itemtype", &itemType);
+					if(itemType != 0)
+					{
+						cmd.mItemType = itemType;
+						QSLOG_INFO("ItemType: %d", itemType);
+						BGSKeyword * foundKeyword = nullptr;
+						BGSKeyword * foundKeywordNot = nullptr;
+						
+						std::string keyword;
+						subElem->QueryString2Attribute("keyword", &keyword);
+						std::string keywordNot;
+						subElem->QueryString2Attribute("keywordnot", &keywordNot);
+
+						//We get the keywords array here by string.
+						std::vector<BGSKeyword*> keywordsArray;
+						trim(keyword);
+						if(keyword.length()>0)
+						{
+							cmd.mKeyword = keyword;
+							for (const auto& keywordStr : split(keyword, ','))
+							{
+								foundKeyword = papyrusKeyword::GetKeyword(nullptr, BSFixedString (keywordStr.c_str()));
+								if (foundKeyword != nullptr)
+								{
+									keywordsArray.emplace_back(foundKeyword);
+								}
+							}																				
+							QSLOG_INFO("keyword count: %d", keywordsArray.size());
+						}
+
+						//We get the keywordsNot array here by string.
+						std::vector<BGSKeyword*> keywordsNotArray;
+						trim(keywordNot);
+						if (keywordNot.length()>0)
+						{
+							cmd.mKeywordNot = keywordNot;
+							for (const auto& keywordNotStr : split(keywordNot, ','))
+							{
+								foundKeywordNot = papyrusKeyword::GetKeyword(nullptr, BSFixedString (keywordNotStr.c_str()));
+								if (foundKeywordNot != nullptr)
+								{
+									keywordsNotArray.emplace_back(foundKeywordNot);
+								}
+							}
+							QSLOG_INFO("keywordNot count: %d", keywordsNotArray.size());
+						}
+
+						if(itemType == CQuickslot::eItemType::Ingestible)
+						{
+							subElem->QueryIntAttribute("potion", &cmd.mPotion);
+							subElem->QueryIntAttribute("food", &cmd.mFood);
+							subElem->QueryIntAttribute("poison", &cmd.mPoison);
+
+							QSLOG_INFO("GetAllPotions...");
+							std::vector<UInt32> allPotionFormIds = GetAllPotions(allPlugins, modIndex, keywordsArray, keywordsNotArray, cmd.mPotion, cmd.mFood, cmd.mPoison);
+														
+							QSLOG_INFO("Ingestible FormIds found for slot %s count:%d", slotname, allPotionFormIds.size());
+							for (UInt32 potionFormId : allPotionFormIds)
+							{
+								cmd.mFormIDList.emplace_back(potionFormId);
+							}
+						}
+						else if(itemType == CQuickslot::eItemType::Ammunition)
+						{
+							QSLOG_INFO("GetAllAmmo...");
+							std::vector<UInt32> allAmmoFormIds = GetAllAmmo(allPlugins, modIndex, keywordsArray, keywordsNotArray);
+														
+							QSLOG_INFO("Ammunition FormIds found for slot %s count:%d", slotname, allAmmoFormIds.size());
+							for (UInt32 ammoFormId : allAmmoFormIds)
+							{
+								cmd.mFormIDList.emplace_back(ammoFormId);
+							}
+						}
 					}
 
 					// get which slot to use
-					subElem->QueryIntAttribute("slot", &cmd[cmdCount].mSlot);
+					subElem->QueryIntAttribute("slot", &cmd.mSlot);
 
 					if (subElem->GetText())
 					{
-						cmd[cmdCount].mCommand = subElem->GetText();
+						cmd.mConsoleCommand = subElem->GetText();
 					}
+					cmdList.emplace_back(cmd);
 				}
-				cmdCount++;
-
 			}
 
-			CQuickslot quickslot(PapyrusVR::Vector3(position[0], position[1], position[2]), radius, cmd[0], cmd[1], slotname);
+			
+			CQuickslot quickslot(PapyrusVR::Vector3(position[0], position[1], position[2]), radius, cmdList, order, slotname);
 			mQuickslotArray.push_back(quickslot);
 
 			quickslotCount++;
 			QSLOG_INFO("Read in quickslot #%d, info below:", quickslotCount);
 			quickslot.PrintInfo();
-
 		}
 	}
 
@@ -163,17 +360,22 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 	options->SetAttribute("disablerawapi", mDisableRawAPI);
 	options->SetAttribute("controllerradius", mControllerRadius);
 	options->SetAttribute("hoverquickslothaptictime", mHoverQuickslotHapticTime);
+	options->SetAttribute("activatebutton", mActivateButton);	
 
 	root->InsertFirstChild(options);
 
 	// lambda func for processing command actions and writing to XML (will be used in loop below)
-	auto WriteAction = [&](const CQuickslot::CQuickslotCmd& cmd, tinyxml2::XMLElement* qselem)
+	auto WriteAction = [&](const CQuickslot::CQuickslotCmd& cmd, tinyxml2::XMLElement* qselem, int order)
 	{
 		tinyxml2::XMLElement* actionElem = nullptr;
 
 		if (cmd.mAction == CQuickslot::EQUIP_ITEM)
 		{
 			actionElem = xmldoc.NewElement("equipitem");
+		}
+		else if (cmd.mAction == CQuickslot::EQUIP_OTHER)
+		{
+			actionElem = xmldoc.NewElement("equipother");
 		}
 		else if (cmd.mAction == CQuickslot::EQUIP_SPELL)
 		{
@@ -186,19 +388,92 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 		else if (cmd.mAction == CQuickslot::CONSOLE_CMD)
 		{
 			actionElem = xmldoc.NewElement("consolecmd");
-			actionElem->SetText(cmd.mCommand.c_str());
+			actionElem->SetText(cmd.mConsoleCommand.c_str());
+		}
+		else if (cmd.mAction == CQuickslot::DROP_OBJECT)
+		{
+			actionElem = xmldoc.NewElement("dropobject");
+			actionElem->SetAttribute("count", cmd.mCount);			
 		}
 		else
 		{
 			return;
 		}
-		
+
+		if (cmd.mItemType > 0)
+		{
+			actionElem->SetAttribute("itemtype", cmd.mItemType);
+
+			if (cmd.mItemType == CQuickslot::eItemType::Ingestible)
+			{
+				actionElem->SetAttribute("potion", cmd.mPotion);
+				actionElem->SetAttribute("food", cmd.mFood);
+				actionElem->SetAttribute("poison", cmd.mPoison);
+			}
+			
+			if (cmd.mKeyword.length() > 0)
+				actionElem->SetAttribute("keyword", cmd.mKeyword.c_str());
+
+			if (cmd.mKeywordNot.length() > 0)
+				actionElem->SetAttribute("keywordnot", cmd.mKeywordNot.c_str());
+		}
+
+		if (!cmd.mPluginName.empty())
+		{
+			actionElem->SetAttribute("pluginname", cmd.mPluginName.c_str());
+		}
+
 		// Special case for formID, write as hex by string
-		char hexFormId[100] = { 0 };
-		sprintf_s(hexFormId, "%x", cmd.mFormID);
-		actionElem->SetAttribute("formid", hexFormId);
-		
-		actionElem->SetAttribute("slot", cmd.mSlot);
+		if (!cmd.mFormIDList.empty() && cmd.mItemType == 0)
+		{
+			if (cmd.mFormIDList.size() == 1)
+			{
+				std::string hexFormIdStr = num2hex(cmd.mFormIDList[0], 8);
+
+				std::string formIdAttribute = "";
+				if (hexFormIdStr.length() > 2 && hexFormIdStr[0] == '0' && hexFormIdStr[1] == '0')
+				{
+					formIdAttribute.append(hexFormIdStr);
+				}
+				else
+				{
+					if (hexFormIdStr.length() == 8)
+					{
+						DataHandler * dataHandler = DataHandler::GetSingleton();
+
+						ModInfo * modInfo = dataHandler->modList.loadedMods[getHex(hexFormIdStr.substr(0, 2))];
+
+						if (modInfo)
+						{
+							actionElem->SetAttribute("pluginname", modInfo->name);
+
+							formIdAttribute.append(hexFormIdStr.substr(2, 6));
+						}
+						else
+						{
+							formIdAttribute.append(hexFormIdStr);
+						}
+					}
+					else
+					{
+						formIdAttribute.append(hexFormIdStr);
+					}
+				}
+				actionElem->SetAttribute("formid", formIdAttribute.c_str());
+			}
+			else
+			{
+				if (cmd.mFormIdStr.length() > 0)
+				{
+					actionElem->SetAttribute("formid", cmd.mFormIdStr.c_str());
+				}
+			}
+		}
+
+		if (cmd.mAction != CQuickslot::DROP_OBJECT && cmd.mAction != CQuickslot::CONSOLE_CMD && cmd.mAction != CQuickslot::EQUIP_SHOUT)
+		{
+			actionElem->SetAttribute("slot", cmd.mSlot);
+		}
 
 		qselem->InsertEndChild(actionElem);
 
@@ -217,9 +492,24 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 		quickslotElem->SetAttribute("posy", it->mOrigin.y);
 		quickslotElem->SetAttribute("posz", it->mOrigin.z);
 
+		if (it->mOrder != CQuickslot::eOrderType::DEFAULT)
+		{
+			quickslotElem->SetAttribute("order", it->mOrder);
+		}
+		
 		// do quickslot actions
-		WriteAction(it->mCommand, quickslotElem);
-		WriteAction(it->mCommandAlt, quickslotElem);
+		if (it->mOrder == CQuickslot::eOrderType::DEFAULT)
+		{
+			WriteAction(it->mCommand, quickslotElem, it->mOrder);
+			WriteAction(it->mCommandAlt, quickslotElem, it->mOrder);
+		}
+		else
+		{
+			for (int c = 0; c < it->mOtherCommands.size(); c++)
+			{
+				WriteAction(it->mOtherCommands[c], quickslotElem, it->mOrder);
+			}
+		}
 
 		// store quickslot
 		root->InsertEndChild(quickslotElem);
