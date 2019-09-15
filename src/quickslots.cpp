@@ -712,7 +712,7 @@ void CQuickslot::SetAction(PapyrusVR::VRDevice deviceId)
 	}
 }
 
-
+// TODO NOTE: UnsetAction will not unset "mOtherCommands" at all ATM 
 void CQuickslot::UnsetAction()
 {
 	mCommand.mAction = NO_ACTION;

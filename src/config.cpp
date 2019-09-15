@@ -164,7 +164,7 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 					{
 						cmd.mPluginName = pluginName;
 						//We get the mod index of the plugin
-						modIndex = dataHandler->GetModIndex(pluginName.c_str());
+						modIndex = dataHandler->GetLoadedModIndex(pluginName.c_str());
 						if (modIndex != 255) //If plugin is in the load order.
 						{
 							allPlugins = false;
@@ -191,10 +191,12 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 							//We fill the missing hex chars with zeroes
 							if (formIdStrElement.length() < 6)
 							{
+								std::string zeroes = "";
 								for (int l = 0; l < 6 - formIdStrElement.length(); l++)
 								{
-									formIdStrElement = "0" + formIdStrElement;
+									zeroes = "0" + zeroes;
 								}
+								formIdStrElement = zeroes + formIdStrElement;
 							}
 
 							//If there is a pluginName defined, we use that pluginNumber instead of the supplied one if supplied.
@@ -431,11 +433,15 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 				std::string hexFormIdStr = num2hex(cmd.mFormIDList[0], 8);
 
 				std::string formIdAttribute = "";
+				
+				/*
 				if (hexFormIdStr.length() > 2 && hexFormIdStr[0] == '0' && hexFormIdStr[1] == '0')
 				{
 					formIdAttribute.append(hexFormIdStr);
 				}
 				else
+				*/
+
 				{
 					if (hexFormIdStr.length() == 8)
 					{
@@ -505,6 +511,7 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 		}
 		else
 		{
+			// NOTE: new order types only write to "mOtherCommands" and normal command vars remain untouched
 			for (int c = 0; c < it->mOtherCommands.size(); c++)
 			{
 				WriteAction(it->mOtherCommands[c], quickslotElem, it->mOrder);
