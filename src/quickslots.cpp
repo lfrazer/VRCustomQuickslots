@@ -596,8 +596,8 @@ bool CQuickslot::DoAction(const CQuickslotCmd& cmd, UInt32 formId)
 
 		if (spellForm != nullptr)
 		{
-			//Check if player knows the spell to prevent cheating
-			if (HasSpell((*g_skyrimVM)->GetClassRegistry(), 0, (Actor*)(*g_thePlayer), spellForm))
+			//Check if player knows the spell to prevent cheating (special allowance for spellsiphon though)
+			if ( (GetModIndex(formId) == CQuickslotManager::GetSingleton().GetSpellsiphonModIndex()) || HasSpell((*g_skyrimVM)->GetClassRegistry(), 0, (Actor*)(*g_thePlayer), spellForm))
 			{
 				const char* slotNames[3] = { "default", "right", "left" };  // should match eSlotType
 				const size_t cmdBufferSize = 255;
@@ -640,8 +640,8 @@ bool CQuickslot::DoAction(const CQuickslotCmd& cmd, UInt32 formId)
 
 		if (spellForm != nullptr)
 		{
-			//Check if player knows the shout to prevent cheating
-			if (HasSpell((*g_skyrimVM)->GetClassRegistry(), 0, (Actor*)(*g_thePlayer), spellForm))
+			//Check if player knows the shout to prevent cheating (same check for spellsiphon)
+			if ((GetModIndex(formId) == CQuickslotManager::GetSingleton().GetSpellsiphonModIndex()) || HasSpell((*g_skyrimVM)->GetClassRegistry(), 0, (Actor*)(*g_thePlayer), spellForm))
 			{
 				const size_t cmdBufferSize = 255;
 				char cmdBuffer[cmdBufferSize];

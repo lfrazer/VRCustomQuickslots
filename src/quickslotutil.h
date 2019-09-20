@@ -514,3 +514,17 @@ inline bool EquipItemEx(Actor* thisActor, TESForm* item, SInt32 slotId, bool pre
 
 	return true;
 }
+
+
+// get mod index from a normal form ID 32 bit unsigned
+inline UInt32 GetModIndex(UInt32 formId)
+{
+	return formId >> 24;
+}
+
+// get base formID (without mod index)
+inline UInt32 GetBaseFormID(UInt32 formId)
+{
+	return formId & 0x00FFFFFF;
+}
+

@@ -101,7 +101,7 @@ public:
 	};
 
 	CQuickslot() = default;
-	CQuickslot(PapyrusVR::Vector3 pos, float radius, std::vector<CQuickslotCmd> cmdList, int order, const char* name = nullptr)
+	CQuickslot(PapyrusVR::Vector3 pos, float radius, const std::vector<CQuickslotCmd>& cmdList, int order, const char* name = nullptr)
 	{
 		mPosition = pos;
 		mOrigin = pos;
@@ -192,6 +192,8 @@ public:
 		mVRSystem = hookMgr->GetVRSystem();
 	}
 
+	UInt32			GetSpellsiphonModIndex() { return mSpellsiphonModIndex; }
+
 private:
 
 	void	GetVRSystem();
@@ -224,6 +226,8 @@ private:
 	double							mControllerHapticTime[2] = { 0.0 };
 	double							mHoverQuickslotHapticTime = 0.05; // length of time to send haptics when hovering over a quickslot (disable if <= 0)
 
+
+	UInt32							mSpellsiphonModIndex = 0;
 };
 
 typedef bool(*_HasSpell)(VMClassRegistry * registry, UInt64 stackID, Actor *actor, TESForm *akSpell);

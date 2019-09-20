@@ -50,6 +50,9 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 
 	Reset();  // reset current quickslot data
 
+	// special case setup for spellsiphon
+	mSpellsiphonModIndex = DataHandler::GetSingleton()->GetLoadedModIndex("Spellsiphon.esp");
+
 	int quickslotCount = 0;
 	tinyxml2::XMLElement* root = xmldoc.RootElement();
 
@@ -214,12 +217,13 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 
 							if (formId > 0)
 							{
-								//QSLOG_INFO("FormId found for slot %s: %x - formIdStrElement: %s pluginNumber: %s", slotname, formId, formIdStrElement.c_str(), pluginNumber.c_str());
+
 
 								//We check if the formid is correct and corresponds to a real formid in the game.
 								TESForm* formObj = LookupFormByID(formId);
 								if (formObj != nullptr)
 								{
+									QSLOG_INFO("FormId found for slot %s: %x - formIdStrElement: %s pluginNumber: %s", slotname, formId, formIdStrElement.c_str(), pluginNumber.c_str());
 									cmd.mFormIDList.emplace_back(formId);
 								}
 								else
