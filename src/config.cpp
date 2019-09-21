@@ -129,7 +129,6 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 					}
 
 					DataHandler * dataHandler = DataHandler::GetSingleton();
-					std::string pluginNumber = "";
 					bool allPlugins = true;
 					UInt8 modIndex = 0;
 					std::string formIdString;
@@ -161,20 +160,19 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 						}
 					}
 
-					std::string pluginName;
-					subElem->QueryString2Attribute("pluginname", &pluginName);
-					if(pluginName.length()>0)
+					const char* pluginName;
+					subElem->QueryStringAttribute("pluginname", &pluginName);
+					if(strlen(pluginName) > 0)
 					{
 						cmd.mPluginName = pluginName;
 						//We get the mod index of the plugin
-						modIndex = dataHandler->GetLoadedModIndex(pluginName.c_str());
-						if (modIndex != 255) //If plugin is in the load order.
+						modIndex = dataHandler->GetLoadedModIndex(pluginName);
+						if (modIndex != 0xFF) //If plugin is in the load order.
 						{
 							allPlugins = false;
 							if (modIndex >= 0)
 							{
-								pluginNumber = num2hex(modIndex, 2);
-								QSLOG_INFO("%s Pluginname: %s -> %s", slotname, pluginName.c_str(), pluginNumber.c_str());
+								QSLOG_INFO("%s Pluginname: %s  LoadedModIndex: 0x%x", slotname, pluginName, modIndex);
 							}
 						}
 						else
@@ -191,39 +189,22 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 							if (formIdStrElement.length() == 0)
 								continue;
 
-							//We fill the missing hex chars with zeroes
-							if (formIdStrElement.length() < 6)
-							{
-								std::string zeroes = "";
-								for (int l = 0; l < 6 - formIdStrElement.length(); l++)
-								{
-									zeroes = "0" + zeroes;
-								}
-								formIdStrElement = zeroes + formIdStrElement;
-							}
-
-							//If there is a pluginName defined, we use that pluginNumber instead of the supplied one if supplied.
-							if (!pluginNumber.empty())
-							{
-								if (formIdStrElement.length() == 8 && pluginNumber.length() == 2)
-								{
-									formIdStrElement = formIdStrElement.substr(2, 6);
-								}
-								
-								formIdStrElement = pluginNumber + formIdStrElement;
-							}
-
 							UInt32 formId = getHex(formIdStrElement);  // convert hex string to int
+
+							//If there is a valid modIndex, we use that instead of the supplied one if supplied.
+							if (IsValidModIndex(modIndex))
+							{
+								formId = (modIndex << 24) | GetBaseFormID(formId);
+							}
 
 							if (formId > 0)
 							{
-
 
 								//We check if the formid is correct and corresponds to a real formid in the game.
 								TESForm* formObj = LookupFormByID(formId);
 								if (formObj != nullptr)
 								{
-									QSLOG_INFO("FormId found for slot %s: %x - formIdStrElement: %s pluginNumber: %s", slotname, formId, formIdStrElement.c_str(), pluginNumber.c_str());
+									QSLOG_INFO("FormId found for slot %s: 0x%x - formIdStrElement: %s modIndex: 0x%x", slotname, formId, formIdStrElement.c_str(), modIndex);
 									cmd.mFormIDList.emplace_back(formId);
 								}
 								else
@@ -296,7 +277,7 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 							subElem->QueryIntAttribute("poison", &cmd.mPoison);
 
 							QSLOG_INFO("GetAllPotions...");
-							std::vector<UInt32> allPotionFormIds = GetAllPotions(allPlugins, modIndex, keywordsArray, keywordsNotArray, cmd.mPotion, cmd.mFood, cmd.mPoison);
+							std::vector<UInt32> allPotionFormIds = GetAllPotions(allPlugins, modIndex, keywordsArray, keywordsNotArray, (bool)cmd.mPotion, (bool)cmd.mFood, (bool)cmd.mPoison);
 														
 							QSLOG_INFO("Ingestible FormIds found for slot %s count:%d", slotname, allPotionFormIds.size());
 							for (UInt32 potionFormId : allPotionFormIds)
@@ -434,18 +415,18 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 		{
 			if (cmd.mFormIDList.size() == 1)
 			{
-				std::string hexFormIdStr = num2hex(cmd.mFormIDList[0], 8);
+				char hexFormId[50];
+				sprintf_s(hexFormId, "%x", cmd.mFormIDList[0]);
 
+				std::string hexFormIdStr = hexFormId;
 				std::string formIdAttribute = "";
 				
-				/*
-				if (hexFormIdStr.length() > 2 && hexFormIdStr[0] == '0' && hexFormIdStr[1] == '0')
+				
+				if (!IsValidModIndex(GetModIndex(cmd.mFormIDList[0])))
 				{
 					formIdAttribute.append(hexFormIdStr);
 				}
 				else
-				*/
-
 				{
 					if (hexFormIdStr.length() == 8)
 					{
