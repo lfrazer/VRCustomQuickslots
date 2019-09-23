@@ -174,8 +174,9 @@ void	CQuickslotManager::Update(PapyrusVR::TrackedDevicePose* hmdPose, PapyrusVR:
 						{
 							// trigger haptic response
 
-							// Empty slot if it is bound to an action, otherwise modify it
-							if (quickslot->mCommand.mAction != CQuickslot::NO_ACTION)
+							// Empty slot if it is bound to an action, otherwise modify it (also special case for non-default orders to check "mOtherCommands")
+							if ( (quickslot->mOrder == CQuickslot::DEFAULT && quickslot->mCommand.mAction != CQuickslot::NO_ACTION)
+								|| (quickslot->mOtherCommands.size() > 0 && quickslot->mOtherCommands[0].mAction != CQuickslot::NO_ACTION) )
 							{
 								StartHaptics(controllerRoles[i], 0.5); // haptics on un-equip slot
 								quickslot->UnsetAction();
@@ -683,30 +684,45 @@ void CQuickslot::SetAction(PapyrusVR::VRDevice deviceId)
 	// set action for only the current hand
 	TESForm* formObj = (*g_thePlayer)->GetEquippedObject(effectiveSlot == SLOT_LEFTHAND);
 
-	if (formObj)
+	auto SetCommand = [formObj, slot](CQuickslotCmd& cmd)
 	{
-		if (formObj->GetFormType() == kFormType_Weapon)
+		if (formObj)
 		{
-			mCommand.mAction = EQUIP_ITEM;
-		}
-		else
-		{
-			mCommand.mAction = EQUIP_SPELL;
-		}
+			if (formObj->GetFormType() == kFormType_Weapon)
+			{
+				cmd.mAction = EQUIP_ITEM;
+			}
+			else
+			{
+				cmd.mAction = EQUIP_SPELL;
+			}
 
-		mCommand.mSlot = slot;
-		mCommand.mFormIDList.clear();
-		mCommand.mFormIDList.emplace_back(formObj->formID);
-		mCommand.mConsoleCommand = "";
-		mCommand.mItemType = 0;
-		mCommand.mFormIdStr = "";
-		mCommand.mKeyword = "";
-		mCommand.mKeywordNot = "";
-		mCommand.mPluginName = "";
-		mCommand.mFood = 1;
-		mCommand.mPoison = 1;
-		mCommand.mPotion = 1;
-		mCommand.mCount = 1;
+			cmd.mSlot = slot;
+			cmd.mFormIDList.clear();
+			cmd.mFormIDList.emplace_back(formObj->formID);
+			cmd.mConsoleCommand = "";
+			cmd.mItemType = 0;
+			cmd.mFormIdStr = "";
+			cmd.mKeyword = "";
+			cmd.mKeywordNot = "";
+			cmd.mPluginName = "";
+			cmd.mFood = 1;
+			cmd.mPoison = 1;
+			cmd.mPotion = 1;
+			cmd.mCount = 1;
+		}
+	};
+
+	// special case to change command for first element in toggle order mode
+	if (mOrder == TOGGLE && mOtherCommands.size() > 0)
+	{
+		SetCommand(mOtherCommands[0]);
+
+		QSLOG("Set new action formid=%x on quickslot %s, slotID=%d effectiveSlot=%d for TOGGLE order mode", formObj->formID, this->mName.c_str(), slot, effectiveSlot);
+	}
+	else
+	{
+		SetCommand(mCommand);
 
 		QSLOG("Set new action formid=%x on quickslot %s, slotID=%d effectiveSlot=%d", formObj->formID, this->mName.c_str(), slot, effectiveSlot);
 	}
@@ -715,21 +731,32 @@ void CQuickslot::SetAction(PapyrusVR::VRDevice deviceId)
 // TODO NOTE: UnsetAction will not unset "mOtherCommands" at all ATM 
 void CQuickslot::UnsetAction()
 {
-	mCommand.mAction = NO_ACTION;
-	mCommand.mFormIDList.clear();
-	mCommandAlt.mAction = NO_ACTION;
-	mCommandAlt.mFormIDList.clear();
-	mCommand.mConsoleCommand = "";
-	mCommand.mItemType = 0;
-	mCommand.mFormIdStr = "";
-	mCommand.mKeyword = "";
-	mCommand.mKeywordNot = "";
-	mCommand.mPluginName = "";
-	mCommand.mFood = 1;
-	mCommand.mPoison = 1;
-	mCommand.mPotion = 1;
-	mCommand.mCount = 1;
+	auto UnsetCommand = [](CQuickslotCmd& cmd)
+	{
+		cmd.mAction = NO_ACTION;
+		cmd.mFormIDList.clear();
+		cmd.mConsoleCommand = "";
+		cmd.mItemType = 0;
+		cmd.mFormIdStr = "";
+		cmd.mKeyword = "";
+		cmd.mKeywordNot = "";
+		cmd.mPluginName = "";
+		cmd.mFood = 1;
+		cmd.mPoison = 1;
+		cmd.mPotion = 1;
+		cmd.mCount = 1;
+	};
 
+	// special case to change command for first element in toggle order mode
+	if (mOrder == TOGGLE && mOtherCommands.size() > 0)
+	{
+		UnsetCommand(mOtherCommands[0]);
+	}
+	else
+	{
+		UnsetCommand(mCommand);
+		UnsetCommand(mCommandAlt);
+	}
 }
 
 //ActorEquipItem TaskDelegate functions
