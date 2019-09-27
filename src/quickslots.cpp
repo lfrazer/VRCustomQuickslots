@@ -527,11 +527,16 @@ bool CQuickslot::DoAction(const CQuickslotCmd& cmd, UInt32 formId)
 			if (PlayerHasItem(itemFormObj)) //We check if player has the item and return false if they do not.
 			{
 				QSLOG_INFO("Equipping item formId: %x", formId);
+				// Use papyrus equip in task delegate for stability reasons
+				g_task->AddTask(new taskActorEquipItem(itemFormObj));
+
+				/*
 				if (!EquipItemEx((Actor*)(*g_thePlayer), itemFormObj, CQuickslotManager::GetSingleton().GetEffectiveSlot(cmd.mSlot), false, true))
 				{
 					QSLOG_INFO("Item cannot be equipped: %x", formId);
 					return false;
 				}
+				*/
 			}
 			else
 			{
