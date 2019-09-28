@@ -66,6 +66,7 @@ public:
 
 	enum eItemType
 	{
+		Normal = 0,
 		Ingestible = 1,
 		Ammunition = 2		
 	};

@@ -522,5 +522,5 @@ inline UInt32 GetBaseFormID(UInt32 formId)
 // check if mod index is valid (mod index is the upper 8 bits of form ID)
 inline bool IsValidModIndex(UInt32 modIndex)
 {
-	return modIndex > 0 && modIndex != 0xFF;
+	return modIndex > 0 && modIndex < 0xFF;
 }

@@ -161,8 +161,8 @@ bool   CQuickslotManager::ReadConfig(const char* filename)
 					}
 
 					const char* pluginName;
-					subElem->QueryStringAttribute("pluginname", &pluginName);
-					if(strlen(pluginName) > 0)
+					auto queryStrResult = subElem->QueryStringAttribute("pluginname", &pluginName);
+					if(queryStrResult == tinyxml2::XML_SUCCESS && strlen(pluginName) > 0)
 					{
 						cmd.mPluginName = pluginName;
 						//We get the mod index of the plugin
@@ -405,13 +405,8 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 				actionElem->SetAttribute("keywordnot", cmd.mKeywordNot.c_str());
 		}
 
-		if (!cmd.mPluginName.empty())
-		{
-			actionElem->SetAttribute("pluginname", cmd.mPluginName.c_str());
-		}
-
 		// Special case for formID, write as hex by string
-		if (!cmd.mFormIDList.empty() && cmd.mItemType == 0)
+		if (!cmd.mFormIDList.empty() && cmd.mItemType == CQuickslot::eItemType::Normal)
 		{
 			if (cmd.mFormIDList.size() == 1)
 			{
@@ -421,34 +416,31 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 				std::string hexFormIdStr = hexFormId;
 				std::string formIdAttribute = "";
 				
+				UInt32	modIdx = GetModIndex(cmd.mFormIDList[0]);
 				
-				if (!IsValidModIndex(GetModIndex(cmd.mFormIDList[0])))
+				if (!IsValidModIndex(modIdx))
 				{
 					formIdAttribute.append(hexFormIdStr);
 				}
 				else
 				{
-					if (hexFormIdStr.length() == 8)
+					DataHandler* dataHandler = DataHandler::GetSingleton();
+					ModInfo* modInfo = dataHandler->modList.loadedMods[modIdx];
+
+					if (modInfo)
 					{
-						DataHandler * dataHandler = DataHandler::GetSingleton();
+						actionElem->SetAttribute("pluginname", modInfo->name);
+						char baseHexFormId[50];
+						sprintf_s(baseHexFormId, "%x", GetBaseFormID(cmd.mFormIDList[0]));
 
-						ModInfo * modInfo = dataHandler->modList.loadedMods[getHex(hexFormIdStr.substr(0, 2))];
-
-						if (modInfo)
-						{
-							actionElem->SetAttribute("pluginname", modInfo->name);
-
-							formIdAttribute.append(hexFormIdStr.substr(2, 6));
-						}
-						else
-						{
-							formIdAttribute.append(hexFormIdStr);
-						}
+						formIdAttribute.append(baseHexFormId);
 					}
 					else
 					{
 						formIdAttribute.append(hexFormIdStr);
 					}
+
+
 				}
 				actionElem->SetAttribute("formid", formIdAttribute.c_str());
 			}
