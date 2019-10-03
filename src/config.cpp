@@ -450,6 +450,12 @@ bool	CQuickslotManager::WriteConfig(const char* filename)
 				{
 					actionElem->SetAttribute("formid", cmd.mFormIdStr.c_str());
 				}
+				// also apply the plugin name manually from existing one in the case of formIDList size > 1
+				if (!cmd.mPluginName.empty())
+				{
+					actionElem->SetAttribute("pluginname", cmd.mPluginName.c_str());
+				}
+
 			}
 		}
 
